@@ -1,0 +1,146 @@
+/* MENU CENTRAL */
+#menu-container {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  text-align: center;
+  padding: 30px;
+  border-radius: 12px;
+}
+
+/* TÍTULO */
+#menu-container h1 {
+  color: #ffffff;
+  margin-bottom: 30px;
+  font-size: 36px;
+  letter-spacing: 2px;
+}
+
+#titulo{
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    padding-top: 20px;
+    height: 40%;
+}
+
+/* BOTÕES */
+#menu-container button {
+  display: block;
+  width: 350px;
+  margin: 10px auto;
+  padding: 12px;
+  font-family: 'Press Start 2P', monospace;
+  font-size: 18px;
+  color: #e1f0f0;
+  background-color: rgba(11, 15, 33, 0.6);
+
+  border: solid;
+  border-radius: 6px;
+
+  cursor: pointer;
+  transition: background 0.3s, transform 0.2s;
+}
+
+#menu-container button:hover {
+  background: #36546c;
+  transform: scale(1.05);
+}
+
+#start {
+  background: rgba(255, 255, 255, 0.7) !important; /* 70% de branco */
+  color: black !important;
+}
+
+
+
+.hud-footer {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  width: 100%;
+  height: 80px;
+
+  display: flex;
+  justify-content: flex-end; /* conteúdo à direita */
+  align-items: center;
+  gap: 16px; /* espaço entre os botões */
+
+  padding: 0 24px; /* espaço nas laterais da tela */
+
+  background: transparent; /* HUD */
+}
+
+/* Botões transparentes com ícone */
+.icon-btn {
+  
+  border: none;
+  color: white;
+  border: solid;
+  font-size: 24px;
+  cursor: pointer;
+
+  width: 44px;
+  height: 44px;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  border-radius: 10px;
+  transition: background 0.2s ease, transform 0.1s ease;
+  background: rgba(11, 15, 33, 0.6);
+;
+}
+
+.icon-btn:hover {
+  background: rgba(255, 255, 255, 0.1);
+  border: solid;
+  transform: scale(1.05);
+}
+
+.icon-btn:active {
+  transform: scale(0.95);
+}
+
+.hidden {
+  display: none;
+}
+
+
+/* Fundo do modal */
+.modal {
+  display: none; /* escondido por padrão */
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-color: rgba(11, 15, 33, 0.6); /* transparente escuro */
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
+}
+
+/* Conteúdo do modal */
+.modal-content {
+  background: #0b0f21;
+  border: solid;
+  color: white;
+  padding: 20px;
+  border-radius: 10px;
+  width: 300px;
+  max-width: 80%;
+  text-align: center;
+}
+
+/* Botão fechar */
+.close {
+  position: absolute;
+  top: 10px;
+  right: 15px;
+  font-size: 24px;
+  cursor: pointer;
+}
+

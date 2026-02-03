@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8" />
+  <title>Mission: Lunar</title>
+  <link rel="stylesheet" href="css/style.css">
+  <link rel="stylesheet" href="css/menu.css">
+</head>
+<body>
+
+    <div id="titulo">
+        <img src="assets/texture/Mission_ Moon.png" style="width: 30%;" />
+    </div>
+    
+    <div id="menu-container" >
+        <button id="start">Iniciar</button>
+        <button id="exit">Sair</button>
+    </div>
+    <div class="hud-footer" style="width: 95%;">
+        
+        <button class="icon-btn" id="story-btn" title="História">
+            📖
+        </button>
+
+        <div id="myModal" class="modal">
+            <div class="modal-content">
+                <span id="closeModal" class="close">&times;</span>
+                <h2>O primeiro passo</h2>
+                <p> Desde os tempos antigos, o homem olhou para a Lua e sonhou em tocá-la.
+                    Hoje, você está prestes a transformar esse sonho em realidade.
+
+                    A nave pousa suavemente na superfície prateada.
+                    O silêncio do espaço envolve você, e cada passo deixa uma marca que será lembrada para sempre.
+
+                    Sua missão: plantar a bandeira da humanidade na Lua, simbolizando coragem, esperança e a audácia de ir onde ninguém jamais foi.
+
+                    Um passo para você, mas um salto para toda a humanidade.
+                </p>
+            </div>
+        </div>
+
+        <button class="icon-btn" id="profile" title="Perfil">
+            👨‍🚀
+        </button>
+        <div id="myProfile" class="modal">
+            <div class="modal-content">
+                <span id="closeModalProfile" class="close">&times;</span>
+                <h2>Perfil: Neil Armstrong</h2>
+                <p> Neil Armstrong, engenheiro, piloto e astronauta, entrou para a história em 20 de julho de 1969, quando se tornou o primeiro homem a pisar na Lua.
+                Com palavras simples, mas cheias de significado — 'É um pequeno passo para o homem, um grande salto para a humanidade' —, ele marcou o planeta inteiro.
+                Sua coragem, disciplina e determinação simbolizam a ousadia humana de explorar o desconhecido, inspirando gerações a olhar para o céu e sonhar grande.
+                </p>
+            </div>
+        </div>
+
+
+    </div>
+
+    <script type="module" src="ui/menu.js" defer></script>
+</body>
+</html>
