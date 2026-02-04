@@ -10,13 +10,14 @@ const turnSpeed = 0.2;  // velocidade de giro
 
 const keys = {};
 
-window.addEventListener("keydown", (e) => {
-    keys[e.key.toLowerCase()] = true;
-});
 
-window.addEventListener("keyup", (e) => {
-    keys[e.key.toLowerCase()] = false;
-});
+// window.addEventListener("keydown", (e) => {
+//     keys[e.key.toLowerCase()] = true;
+// });
+
+// window.addEventListener("keyup", (e) => {
+//     keys[e.key.toLowerCase()] = false;
+// });
 //=================================================
 
 const canvas = document.getElementById("glCanvas");
@@ -28,7 +29,25 @@ if (!gl) {
     alert("WebGL não suportado");
 }
 gl.viewport(0, 0, canvas.width, canvas.height);
+canvas.addEventListener("click", () => {
+    canvas.requestPointerLock();
+});
+//============================================]
+//permite o uso do mouse para rotação
+let pitch = 0;
 
+window.addEventListener("mousemove", (e) => {
+    if (document.pointerLockElement === canvas) {
+        const sensitivity = 0.002;
+        yaw += e.movementX * sensitivity;
+        pitch -= e.movementY * sensitivity;
+        
+        // limitar para não virar de ponta cabeça
+        pitch = Math.max(-Math.PI/2, Math.min(Math.PI/2, pitch));
+    }
+});
+
+//=============================
 
 function draw() {
    // projection
@@ -93,14 +112,14 @@ function render() {
     );
 
     // === ROTACAO COM A / D ===
-    if (keys["a"]) yaw += turnSpeed;
-    if (keys["d"]) yaw -= turnSpeed;
+    // if (keys["a"]) yaw += turnSpeed;
+    // if (keys["d"]) yaw -= turnSpeed;
 
     const dir = [
-        Math.sin(yaw),
-        0,
-        -Math.cos(yaw)
-    ];
+    Math.cos(pitch) * Math.sin(yaw),
+    Math.sin(pitch),
+    -Math.cos(pitch) * Math.cos(yaw)
+];
 
     const camPos = [0, 0, 10];
 
