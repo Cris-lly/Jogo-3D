@@ -26,3 +26,16 @@ body {
     display: block;
 }
 /* ==================================================== */
+
+#modalInfo {
+  position: absolute;
+  background: rgba(0,0,0,0.8);
+  color: white;
+  padding: 10px 14px;
+  border-radius: 8px;
+  font-family: sans-serif;
+  pointer-events: none;
+  transform: translate(-50%, -100%);
+  display: none;
+  white-space: nowrap;
+}
