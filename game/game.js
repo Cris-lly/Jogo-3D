@@ -9,6 +9,9 @@ import {
     addObstacle
 } from "../core/input.js";
 
+import { loadOBJ } from "../core/objLoader.js";
+
+
 // =======================
 // CANVAS
 // =======================
@@ -29,7 +32,7 @@ function compileShader(type, src) {
     const shader = gl.createShader(type);
     gl.shaderSource(shader, src);
     gl.compileShader(shader);
-
+    
     if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS)) {
         console.error(gl.getShaderInfoLog(shader));
     }
@@ -62,6 +65,20 @@ const room = createRoomWireframe(
 const panelWidth  = 40; // largura (X)
 const panelHeight = 6; // altura (Y)
 const panelDepth  = 6;  // espessura (Z)
+const objWidth  = 4;
+const objHeight = 6;
+const objDepth  = 3;
+const objScale = 6.0; // 
+const objRotation = 80 * Math.PI / 180;
+const astronautColor = [1.0, 1.0, 1.0, 1.0]; // branco
+
+
+
+const objX = -(roomWidth / 2) + (objWidth / 2); // lateral esquerda
+const objY = -(roomHeight / 2) + (objHeight / 2); // chão
+const objZ = 0;
+
+
 
 const panelY = -(roomHeight / 2) + (panelHeight / 2);
 const panelZ = -(roomDepth / 2) + (panelDepth / 2) + 0.01;
@@ -73,6 +90,23 @@ const panel = createRect(
     panelDepth,
     [0, panelY, panelZ]
 );
+
+// =======================
+// Astronauta
+// =======================
+const floatAmplitude = 0.8; // quanto sobe/desce
+const floatSpeed = 0.002;  // velocidade da flutuação
+
+
+let objeto = null;
+
+(async function loadModels() {
+    objeto = await loadOBJ(
+        gl,
+        "./assets/models/astronaut.obj"
+    );
+})();
+
 
 // =======================
 // COLISÃO DO PAINEL
@@ -87,6 +121,7 @@ addObstacle({
     minZ: panelZ - panelDepth / 2,
     maxZ: panelZ + panelDepth / 2
 });
+
 
 // =======================
 // WEBGL STATE
@@ -118,6 +153,38 @@ function multiply(a, b) {
         }
     }
     return r;
+}
+
+// Transformações geométricas
+
+function translate(x, y, z) {
+    return new Float32Array([
+        1, 0, 0, 0,
+        0, 1, 0, 0,
+        0, 0, 1, 0,
+        x, y, z, 1
+    ]);
+}
+
+function scaleMatrix(sx, sy, sz) {
+    return new Float32Array([
+        sx, 0,  0,  0,
+        0,  sy, 0,  0,
+        0,  0,  sz, 0,
+        0,  0,  0,  1
+    ]);
+}
+
+function rotateY(angle) {
+    const c = Math.cos(angle);
+    const s = Math.sin(angle);
+
+    return new Float32Array([
+         c, 0, -s, 0,
+         0, 1,  0, 0,
+         s, 0,  c, 0,
+         0, 0,  0, 1
+    ]);
 }
 
 // =======================
@@ -175,6 +242,53 @@ function render() {
     gl.drawElements(gl.LINES, panel.lineCount, gl.UNSIGNED_SHORT, 0);
 
     requestAnimationFrame(render);
+    
+    // =======================
+    // ASTRONAUTA (OBJ)
+    // =======================
+    if (objeto) {
+        // =======================
+        // FLUTUAÇÃO
+        // =======================
+        const time = performance.now();
+        const floatY = Math.sin(time * floatSpeed) * floatAmplitude;
+
+        // =======================
+        // MATRIZ DO MODELO (MANTIDA)
+        // =======================
+        const S = scaleMatrix(objScale, objScale, objScale);
+        const R = rotateY(objRotation);
+        const T = translate(objX, objY + floatY, objZ); // 👈 só aqui muda
+
+        const model = multiply(T, multiply(R, S));
+
+        gl.uniformMatrix4fv(
+            transfLoc,
+            false,
+            multiply(proj, multiply(cam, model))
+        );
+
+        gl.bindBuffer(gl.ARRAY_BUFFER, objeto.vbo);
+        gl.vertexAttribPointer(posLoc, 3, gl.FLOAT, false, 0, 0);
+        gl.enableVertexAttribArray(posLoc);
+
+        // =======================
+        // OBJETO SÓLIDO
+        // =======================
+        gl.uniform4fv(colorLoc, astronautColor);
+        gl.drawArrays(gl.TRIANGLES, 0, objeto.vertexCount);
+
+        // =======================
+        // WIREFRAME
+        // =======================
+        gl.uniform4f(colorLoc, 0.0, 0.0, 0.0, 1.0);
+        gl.drawArrays(gl.LINES, 0, objeto.vertexCount);
+    }
+
+
+
+
+
 }
 
 console.log("GAME.JS CARREGADO");

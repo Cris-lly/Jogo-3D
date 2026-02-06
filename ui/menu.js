@@ -1,11 +1,6 @@
 // Botões principais
 console.log("GAME INICIADO");
 
-
-document.getElementById("start").onclick = () => {
-  alert("Iniciar jogo!");
-};
-
 document.getElementById("exit").onclick = () => {
   alert("Sair do jogo");
 };
