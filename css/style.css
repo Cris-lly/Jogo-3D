@@ -6,11 +6,23 @@ html, body {
   font-family: Arial, sans-serif;
 }
 
-/* FUNDO COM GIF */
+/* FUNDO MENU COM GIF */
 body {
   background: url("../assets/texture/tent-3.jpg");
   background-size: cover;
   background-position: top;
   background-repeat: no-repeat;
 }
+/* ==================================================== */
+/* TELA DO JOGO */
+#game-screen {
+    width: 100vw;
+    height: 100vh;
+}
 
+#glCanvas {
+    width: 100vw;
+    height: 100vh;
+    display: block;
+}
+/* ==================================================== */

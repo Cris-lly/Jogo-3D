@@ -1,7 +1,5 @@
 // Botões principais
-document.getElementById("start").onclick = () => {
-  alert("Iniciar jogo!");
-};
+console.log("GAME INICIADO");
 
 document.getElementById("exit").onclick = () => {
   alert("Sair do jogo");
@@ -46,4 +44,39 @@ window.onclick = (e) => {
     modalProfile.style.display = "none";
   }
 };
+//======================================================
+//ADICIONA MUSICA
+const startButton = document.getElementById("start");
+const menu = document.getElementById("menu-container");
+const title = document.getElementById("titulo");
+const menuMusic = document.getElementById("menu-music");
+
+menuMusic.volume = 0.5;
+
+// tenta tocar assim que a tela carrega
+menuMusic.play().catch(() => {
+    // se o navegador bloquear, libera no primeiro clique
+    document.addEventListener("click", () => {
+        menuMusic.play();
+    }, { once: true });
+});
+
+// botão iniciar
+startButton.addEventListener("click", async () => {
+    // para a música
+    menuMusic.pause();
+    menuMusic.currentTime = 0;
+
+    // troca de tela
+    menu.style.display = "none";
+    title.style.display = "none";
+
+    const gameScreen = document.getElementById("game-screen");
+    const canvas = document.getElementById("glCanvas");
+    gameScreen.style.display = "block";
+    canvas.style.display = "block";
+
+    await import("../game/game.js");
+});
+
 
