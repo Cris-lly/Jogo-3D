@@ -16,6 +16,8 @@ import { loadOBJ } from "../core/objLoader.js";
 // CANVAS
 // =======================
 const canvas = document.getElementById("glCanvas");
+const modal = document.getElementById("modalInfo");
+
 canvas.width = window.innerWidth;
 canvas.height = window.innerHeight;
 
@@ -155,6 +157,34 @@ function multiply(a, b) {
     return r;
 }
 
+function distance(a, b) {
+  const dx = a[0] - b[0];
+  const dy = a[1] - b[1];
+  const dz = a[2] - b[2];
+  return Math.sqrt(dx*dx + dy*dy + dz*dz);
+}
+function worldToScreen(pos, viewProj, width, height) {
+  const [x, y, z] = pos;
+  const v = [x, y, z, 1];
+
+  const r = new Float32Array(4);
+  for (let i = 0; i < 4; i++) {
+    r[i] =
+      v[0] * viewProj[i] +
+      v[1] * viewProj[i + 4] +
+      v[2] * viewProj[i + 8] +
+      v[3] * viewProj[i + 12];
+  }
+
+  const ndcX = r[0] / r[3];
+  const ndcY = r[1] / r[3];
+
+  return {
+    x: (ndcX * 0.5 + 0.5) * width,
+    y: (-ndcY * 0.5 + 0.5) * height
+  };
+}
+
 // Transformações geométricas
 
 function translate(x, y, z) {
@@ -187,6 +217,7 @@ function rotateY(angle) {
     ]);
 }
 
+
 // =======================
 // RENDER
 // =======================
@@ -211,35 +242,58 @@ function render() {
         ],
         [0, 1, 0]
     );
-
+    
     gl.uniformMatrix4fv(
         transfLoc,
         false,
         multiply(proj, cam)
     );
-
+    
     // =======================
     // SALA (WIREFRAME)
     // =======================
     gl.bindBuffer(gl.ARRAY_BUFFER, room.vbo);
     gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, room.ebo);
-
+    
     gl.vertexAttribPointer(posLoc, 3, gl.FLOAT, false, 0, 0);
     gl.enableVertexAttribArray(posLoc);
-
+    
     gl.uniform4f(colorLoc, 0.15, 0.15, 0.15, 1.0);
     gl.drawElements(gl.LINES, room.lineCount, gl.UNSIGNED_SHORT, 0);
-
+    
     // =======================
     // PAINEL
     // =======================
     gl.bindBuffer(gl.ARRAY_BUFFER, panel.vbo);
     gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, panel.ebo);
-
+    
     gl.vertexAttribPointer(posLoc, 3, gl.FLOAT, false, 0, 0);
-
+    
     gl.uniform4f(colorLoc, 0.2, 0.2, 0.2, 1.0);
     gl.drawElements(gl.LINES, panel.lineCount, gl.UNSIGNED_SHORT, 0);
+    
+    const objWorldPos = [objX, objY, objZ];
+    const d = distance(camPos, objWorldPos);
+
+    const SHOW_DISTANCE = 12;
+
+    if (d < SHOW_DISTANCE) {
+        modal.style.display = "block";
+
+        const vp = multiply(proj, cam);
+
+        const screenPos = worldToScreen(
+            [objX, objY + 8, objZ], // acima do astronauta
+            vp,
+            canvas.width,
+            canvas.height
+        );
+
+        modal.style.left = `${screenPos.x}px`;
+        modal.style.top  = `${screenPos.y}px`;
+        } else {
+        modal.style.display = "none";
+    }
 
     requestAnimationFrame(render);
     
