@@ -6,7 +6,11 @@ import {
     camPos,
     enableMouse,
     updateCameraPosition,
-    addObstacle
+    addObstacle,
+    canInteract,
+    currentInteraction,
+    keys,
+    addInteractionZone
 } from "../core/input.js";
 
 // =======================
@@ -16,6 +20,20 @@ const canvas = document.getElementById("glCanvas");
 canvas.width = window.innerWidth;
 canvas.height = window.innerHeight;
 
+// =======================
+// MISSÃO / INTERAÇÃO
+// =======================
+let interactionProgress = 0;
+const INTERACTION_TIME = 120;
+let missionCompleted = false;
+
+// HUD
+const container = document.getElementById("progressContainer");
+const bar = document.getElementById("progressBar");
+
+// =======================
+// WEBGL
+// =======================
 const gl = canvas.getContext("webgl");
 if (!gl) alert("WebGL não suportado");
 
@@ -59,9 +77,9 @@ const room = createRoomWireframe(
 );
 
 // PAINEL
-const panelWidth  = 40; // largura (X)
-const panelHeight = 6; // altura (Y)
-const panelDepth  = 6;  // espessura (Z)
+const panelWidth  = 40;
+const panelHeight = 6;
+const panelDepth  = 6;
 
 const panelY = -(roomHeight / 2) + (panelHeight / 2);
 const panelZ = -(roomDepth / 2) + (panelDepth / 2) + 0.01;
@@ -89,11 +107,24 @@ addObstacle({
 });
 
 // =======================
+// ZONA DE INTERAÇÃO
+// =======================
+addInteractionZone({
+    id: "painel",
+    minX: -panelWidth / 2,
+    maxX:  panelWidth / 2,
+
+    minY: panelY - panelHeight / 2,
+    maxY: panelY + panelHeight / 2,
+
+    minZ: panelZ - panelDepth / 2 - 1.5,
+    maxZ: panelZ + panelDepth / 2 + 1.5
+});
+
+// =======================
 // WEBGL STATE
 // =======================
 gl.enable(gl.DEPTH_TEST);
-
-// fundo claro → contraste com as linhas
 gl.clearColor(0.9, 0.9, 0.95, 1.0);
 
 // =======================
@@ -133,8 +164,42 @@ function render() {
         1000
     );
 
+    // =======================
+    // ATUALIZA CÂMERA + INTERAÇÃO
+    // =======================
     const dir = updateCameraPosition();
 
+    // =======================
+    // MISSÃO DO PAINEL
+    // =======================
+    if (!missionCompleted) {
+        if (canInteract && currentInteraction === "painel" && keys["e"]) {
+            interactionProgress++;
+
+            if (interactionProgress >= INTERACTION_TIME) {
+                interactionProgress = INTERACTION_TIME;
+                missionCompleted = true;
+                console.log("MISSÃO DO PAINEL CONCLUÍDA ✅");
+            }
+        } else if (!canInteract) {
+            interactionProgress = 0;
+        }
+    }
+
+    // =======================
+    // HUD
+    // =======================
+    if (canInteract && !missionCompleted) {
+        container.style.display = "block";
+        bar.style.width =
+            (interactionProgress / INTERACTION_TIME * 100) + "%";
+    } else {
+        container.style.display = "none";
+    }
+
+    // =======================
+    // CÂMERA / MATRIZ
+    // =======================
     const cam = createCamera(
         camPos,
         [
@@ -152,11 +217,10 @@ function render() {
     );
 
     // =======================
-    // SALA (WIREFRAME)
+    // SALA
     // =======================
     gl.bindBuffer(gl.ARRAY_BUFFER, room.vbo);
     gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, room.ebo);
-
     gl.vertexAttribPointer(posLoc, 3, gl.FLOAT, false, 0, 0);
     gl.enableVertexAttribArray(posLoc);
 
@@ -168,7 +232,6 @@ function render() {
     // =======================
     gl.bindBuffer(gl.ARRAY_BUFFER, panel.vbo);
     gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, panel.ebo);
-
     gl.vertexAttribPointer(posLoc, 3, gl.FLOAT, false, 0, 0);
 
     gl.uniform4f(colorLoc, 0.2, 0.2, 0.2, 1.0);
@@ -176,6 +239,10 @@ function render() {
 
     requestAnimationFrame(render);
 }
+const dir = updateCameraPosition();
+
+console.log("INTERAÇÃO:", canInteract, currentInteraction);
+
 
 console.log("GAME.JS CARREGADO");
 render();
