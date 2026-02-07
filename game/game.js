@@ -21,15 +21,26 @@ canvas.width = window.innerWidth;
 canvas.height = window.innerHeight;
 
 // =======================
-// MISSÃO / INTERAÇÃO
-// =======================
-let interactionProgress = 0;
-const INTERACTION_TIME = 120;
-let missionCompleted = false;
-
 // HUD
+// =======================
 const container = document.getElementById("progressContainer");
 const bar = document.getElementById("progressBar");
+
+// =======================
+// SISTEMA DE MISSÕES (GENÉRICO)
+// =======================
+const missions = {
+    painel: {
+        progress: 0,
+        time: 120,
+        completed: false
+    },
+    painel_eletrico: {
+        progress: 0,
+        time: 180,
+        completed: false
+    }
+};
 
 // =======================
 // WEBGL
@@ -39,6 +50,8 @@ if (!gl) alert("WebGL não suportado");
 
 gl.viewport(0, 0, canvas.width, canvas.height);
 enableMouse(canvas);
+gl.enable(gl.DEPTH_TEST);
+gl.clearColor(0.9, 0.9, 0.95, 1.0);
 
 // =======================
 // SHADERS
@@ -47,7 +60,6 @@ function compileShader(type, src) {
     const shader = gl.createShader(type);
     gl.shaderSource(shader, src);
     gl.compileShader(shader);
-
     if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS)) {
         console.error(gl.getShaderInfoLog(shader));
     }
@@ -64,22 +76,19 @@ gl.useProgram(program);
 // OBJETOS
 // =======================
 
-// SALA (WIREFRAME)
-const roomWidth  = 60;
+// SALA
+const roomWidth = 60;
 const roomHeight = 30;
-const roomDepth  = 90;
+const roomDepth = 90;
 
-const room = createRoomWireframe(
-    gl,
-    roomWidth,
-    roomHeight,
-    roomDepth
-);
+const room = createRoomWireframe(gl, roomWidth, roomHeight, roomDepth);
 
-// PAINEL
-const panelWidth  = 40;
+// =======================
+// PAINEL PRINCIPAL
+// =======================
+const panelWidth = 40;
 const panelHeight = 6;
-const panelDepth  = 6;
+const panelDepth = 6;
 
 const panelY = -(roomHeight / 2) + (panelHeight / 2);
 const panelZ = -(roomDepth / 2) + (panelDepth / 2) + 0.01;
@@ -92,47 +101,73 @@ const panel = createRect(
     [0, panelY, panelZ]
 );
 
-// =======================
-// COLISÃO DO PAINEL
-// =======================
+// colisão física
 addObstacle({
     minX: -panelWidth / 2,
-    maxX:  panelWidth / 2,
-
+    maxX: panelWidth / 2,
     minY: panelY - panelHeight / 2,
     maxY: panelY + panelHeight / 2,
-
     minZ: panelZ - panelDepth / 2,
     maxZ: panelZ + panelDepth / 2
 });
 
-// =======================
-// ZONA DE INTERAÇÃO
-// =======================
+// zona de interação
 addInteractionZone({
     id: "painel",
     minX: -panelWidth / 2,
-    maxX:  panelWidth / 2,
-
+    maxX: panelWidth / 2,
     minY: panelY - panelHeight / 2,
     maxY: panelY + panelHeight / 2,
-
     minZ: panelZ - panelDepth / 2 - 1.5,
     maxZ: panelZ + panelDepth / 2 + 1.5
 });
 
 // =======================
-// WEBGL STATE
+// PAINEL ELÉTRICO (PAREDE DIREITA)
 // =======================
-gl.enable(gl.DEPTH_TEST);
-gl.clearColor(0.9, 0.9, 0.95, 1.0);
+const electricWidth = 6;
+const electricHeight = 10;
+const electricDepth = 2;
+
+const electricX = (roomWidth / 2) - (electricDepth / 2) - 0.01;
+const electricY = -5;
+const electricZ = 0;
+
+const electricPanel = createRect(
+    gl,
+    electricDepth,
+    electricHeight,
+    electricWidth,
+    [electricX, electricY, electricZ]
+);
+
+// colisão física
+addObstacle({
+    minX: electricX - electricDepth / 2,
+    maxX: electricX + electricDepth / 2,
+    minY: electricY - electricHeight / 2,
+    maxY: electricY + electricHeight / 2,
+    minZ: electricZ - electricWidth / 2,
+    maxZ: electricZ + electricWidth / 2
+});
+
+// zona de interação
+addInteractionZone({
+    id: "painel_eletrico",
+    minX: electricX - electricDepth / 2 - 1.5,
+    maxX: electricX + electricDepth / 2 + 1.5,
+    minY: electricY - electricHeight / 2,
+    maxY: electricY + electricHeight / 2,
+    minZ: electricZ - electricWidth / 2 - 1.5,
+    maxZ: electricZ + electricWidth / 2 + 1.5
+});
 
 // =======================
-// UNIFORMS / ATTRIBUTES
+// UNIFORMS
 // =======================
 const transfLoc = gl.getUniformLocation(program, "transf");
-const colorLoc  = gl.getUniformLocation(program, "uColor");
-const posLoc    = gl.getAttribLocation(program, "aPosition");
+const colorLoc = gl.getUniformLocation(program, "uColor");
+const posLoc = gl.getAttribLocation(program, "aPosition");
 
 // =======================
 // MATRIZ
@@ -164,57 +199,52 @@ function render() {
         1000
     );
 
-    // =======================
-    // ATUALIZA CÂMERA + INTERAÇÃO
-    // =======================
     const dir = updateCameraPosition();
 
     // =======================
-    // MISSÃO DO PAINEL
+    // MISSÕES
     // =======================
-    if (!missionCompleted) {
-        if (canInteract && currentInteraction === "painel" && keys["e"]) {
-            interactionProgress++;
+    if (canInteract && currentInteraction) {
+        const mission = missions[currentInteraction];
 
-            if (interactionProgress >= INTERACTION_TIME) {
-                interactionProgress = INTERACTION_TIME;
-                missionCompleted = true;
-                console.log("MISSÃO DO PAINEL CONCLUÍDA ✅");
+        if (!mission.completed && keys["e"]) {
+            mission.progress++;
+
+            if (mission.progress >= mission.time) {
+                mission.progress = mission.time;
+                mission.completed = true;
+                console.log(`MISSÃO ${currentInteraction} CONCLUÍDA ✅`);
             }
-        } else if (!canInteract) {
-            interactionProgress = 0;
         }
     }
 
     // =======================
     // HUD
     // =======================
-    if (canInteract && !missionCompleted) {
-        container.style.display = "block";
-        bar.style.width =
-            (interactionProgress / INTERACTION_TIME * 100) + "%";
+    if (canInteract && currentInteraction) {
+        const mission = missions[currentInteraction];
+
+        if (!mission.completed) {
+            container.style.display = "block";
+            bar.style.width =
+                (mission.progress / mission.time) * 100 + "%";
+        } else {
+            container.style.display = "none";
+        }
     } else {
         container.style.display = "none";
     }
 
     // =======================
-    // CÂMERA / MATRIZ
+    // CÂMERA
     // =======================
     const cam = createCamera(
         camPos,
-        [
-            camPos[0] + dir[0],
-            camPos[1] + dir[1],
-            camPos[2] + dir[2]
-        ],
+        [camPos[0] + dir[0], camPos[1] + dir[1], camPos[2] + dir[2]],
         [0, 1, 0]
     );
 
-    gl.uniformMatrix4fv(
-        transfLoc,
-        false,
-        multiply(proj, cam)
-    );
+    gl.uniformMatrix4fv(transfLoc, false, multiply(proj, cam));
 
     // =======================
     // SALA
@@ -223,26 +253,29 @@ function render() {
     gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, room.ebo);
     gl.vertexAttribPointer(posLoc, 3, gl.FLOAT, false, 0, 0);
     gl.enableVertexAttribArray(posLoc);
-
     gl.uniform4f(colorLoc, 0.15, 0.15, 0.15, 1.0);
     gl.drawElements(gl.LINES, room.lineCount, gl.UNSIGNED_SHORT, 0);
 
     // =======================
-    // PAINEL
+    // PAINEL PRINCIPAL
     // =======================
     gl.bindBuffer(gl.ARRAY_BUFFER, panel.vbo);
     gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, panel.ebo);
     gl.vertexAttribPointer(posLoc, 3, gl.FLOAT, false, 0, 0);
-
     gl.uniform4f(colorLoc, 0.2, 0.2, 0.2, 1.0);
     gl.drawElements(gl.LINES, panel.lineCount, gl.UNSIGNED_SHORT, 0);
 
+    // =======================
+    // PAINEL ELÉTRICO
+    // =======================
+    gl.bindBuffer(gl.ARRAY_BUFFER, electricPanel.vbo);
+    gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, electricPanel.ebo);
+    gl.vertexAttribPointer(posLoc, 3, gl.FLOAT, false, 0, 0);
+    gl.uniform4f(colorLoc, 0.1, 0.3, 0.1, 1.0);
+    gl.drawElements(gl.LINES, electricPanel.lineCount, gl.UNSIGNED_SHORT, 0);
+
     requestAnimationFrame(render);
 }
-const dir = updateCameraPosition();
-
-console.log("INTERAÇÃO:", canInteract, currentInteraction);
-
 
 console.log("GAME.JS CARREGADO");
 render();
