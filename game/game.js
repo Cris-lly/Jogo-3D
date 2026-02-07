@@ -39,6 +39,11 @@ const missions = {
         progress: 0,
         time: 180,
         completed: false
+    },
+    porta:{
+        progress: 0,
+        time: 120,
+        completed: false
     }
 };
 
@@ -162,6 +167,53 @@ addInteractionZone({
     maxZ: electricZ + electricWidth / 2 + 1.5
 });
 
+
+
+// =======================
+// PORTA (PAREDE DE TRÁS)
+// =======================
+const doorWidth  = 12;
+const doorHeight = 16;
+const doorDepth  = 2;
+
+// posição da porta
+const doorX = 0; // centralizada
+const doorY = -(roomHeight / 2) + (doorHeight / 2);
+const doorZ = +(roomDepth / 2) + 0.01;
+
+// geometria
+const door = createRect(
+    gl,
+    doorWidth,
+    doorHeight,
+    doorDepth,
+    [doorX, doorY, doorZ]
+);
+
+addObstacle({
+    minX: doorX - doorWidth / 2,
+    maxX: doorX + doorWidth / 2,
+
+    minY: doorY - doorHeight / 2,
+    maxY: doorY + doorHeight / 2,
+
+    minZ: doorZ - doorDepth / 2,
+    maxZ: doorZ + doorDepth / 2
+});
+
+addInteractionZone({
+    id: "porta",
+
+    minX: doorX - doorWidth / 2 - 1.5,
+    maxX: doorX + doorWidth / 2 + 1.5,
+
+    minY: doorY - doorHeight / 2,
+    maxY: doorY + doorHeight / 2,
+
+    minZ: doorZ - doorDepth / 2 - 1.5,
+    maxZ: doorZ + doorDepth / 2 + 1.5
+});
+
 // =======================
 // UNIFORMS
 // =======================
@@ -199,15 +251,18 @@ function render() {
         1000
     );
 
+    // =======================
+    // ATUALIZA CÂMERA + INTERAÇÃO
+    // =======================
     const dir = updateCameraPosition();
 
     // =======================
-    // MISSÕES
+    // MISSÕES (GENÉRICO)
     // =======================
     if (canInteract && currentInteraction) {
         const mission = missions[currentInteraction];
 
-        if (!mission.completed && keys["e"]) {
+        if (mission && !mission.completed && keys["e"]) {
             mission.progress++;
 
             if (mission.progress >= mission.time) {
@@ -216,18 +271,11 @@ function render() {
                 console.log(`MISSÃO ${currentInteraction} CONCLUÍDA ✅`);
             }
         }
-    }
 
-    // =======================
-    // HUD
-    // =======================
-    if (canInteract && currentInteraction) {
-        const mission = missions[currentInteraction];
-
-        if (!mission.completed) {
+        if (mission && !mission.completed) {
             container.style.display = "block";
             bar.style.width =
-                (mission.progress / mission.time) * 100 + "%";
+                (mission.progress / mission.time * 100) + "%";
         } else {
             container.style.display = "none";
         }
@@ -236,15 +284,23 @@ function render() {
     }
 
     // =======================
-    // CÂMERA
+    // CÂMERA / MATRIZ
     // =======================
     const cam = createCamera(
         camPos,
-        [camPos[0] + dir[0], camPos[1] + dir[1], camPos[2] + dir[2]],
+        [
+            camPos[0] + dir[0],
+            camPos[1] + dir[1],
+            camPos[2] + dir[2]
+        ],
         [0, 1, 0]
     );
 
-    gl.uniformMatrix4fv(transfLoc, false, multiply(proj, cam));
+    gl.uniformMatrix4fv(
+        transfLoc,
+        false,
+        multiply(proj, cam)
+    );
 
     // =======================
     // SALA
@@ -253,6 +309,7 @@ function render() {
     gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, room.ebo);
     gl.vertexAttribPointer(posLoc, 3, gl.FLOAT, false, 0, 0);
     gl.enableVertexAttribArray(posLoc);
+
     gl.uniform4f(colorLoc, 0.15, 0.15, 0.15, 1.0);
     gl.drawElements(gl.LINES, room.lineCount, gl.UNSIGNED_SHORT, 0);
 
@@ -262,6 +319,7 @@ function render() {
     gl.bindBuffer(gl.ARRAY_BUFFER, panel.vbo);
     gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, panel.ebo);
     gl.vertexAttribPointer(posLoc, 3, gl.FLOAT, false, 0, 0);
+
     gl.uniform4f(colorLoc, 0.2, 0.2, 0.2, 1.0);
     gl.drawElements(gl.LINES, panel.lineCount, gl.UNSIGNED_SHORT, 0);
 
@@ -271,11 +329,23 @@ function render() {
     gl.bindBuffer(gl.ARRAY_BUFFER, electricPanel.vbo);
     gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, electricPanel.ebo);
     gl.vertexAttribPointer(posLoc, 3, gl.FLOAT, false, 0, 0);
+
     gl.uniform4f(colorLoc, 0.1, 0.3, 0.1, 1.0);
     gl.drawElements(gl.LINES, electricPanel.lineCount, gl.UNSIGNED_SHORT, 0);
 
+    // =======================
+    // PORTA
+    // =======================
+    gl.bindBuffer(gl.ARRAY_BUFFER, door.vbo);
+    gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, door.ebo);
+    gl.vertexAttribPointer(posLoc, 3, gl.FLOAT, false, 0, 0);
+
+    gl.uniform4f(colorLoc, 0.4, 0.25, 0.1, 1.0);
+    gl.drawElements(gl.LINES, door.lineCount, gl.UNSIGNED_SHORT, 0);
+
     requestAnimationFrame(render);
 }
+
 
 console.log("GAME.JS CARREGADO");
 render();
