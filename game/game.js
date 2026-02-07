@@ -19,8 +19,6 @@ import { loadOBJ } from "../core/objLoader.js";
 // CANVAS
 // =======================
 const canvas = document.getElementById("glCanvas");
-const modal  = document.getElementById("modalInfo");
-
 canvas.width  = window.innerWidth;
 canvas.height = window.innerHeight;
 
@@ -193,18 +191,9 @@ const spaceWindow = createRect(
 );
 
 // =======================
-// ASTRONAUTA
+// OBJETO (ASTRONAUTA)
 // =======================
 let objeto = null;
-
-const objX = -(roomWidth / 2) + 4;
-const objY = -(roomHeight / 2) + 6;
-const objZ = 0;
-
-const objScale = 6;
-const objRotation = 80 * Math.PI / 180;
-const floatAmplitude = 0.8;
-const floatSpeed = 0.002;
 
 (async function () {
     objeto = await loadOBJ(gl, "./assets/models/astronaut.obj");
@@ -258,18 +247,31 @@ function render() {
     const proj = createPerspective(Math.PI / 3, canvas.width / canvas.height, 0.1, 1000);
     const dir = updateCameraPosition();
 
+    // ===== INTERAÇÃO + PROGRESS BAR =====
     if (canInteract && currentInteraction) {
+
         if (keys["e"]) {
             interactionState[currentInteraction]++;
+
+            if (interactionState[currentInteraction] >= INTERACTION_TIME) {
+                interactionState[currentInteraction] = INTERACTION_TIME;
+                console.log("INTERAÇÃO CONCLUÍDA:", currentInteraction);
+            }
         } else {
             interactionState[currentInteraction] = 0;
         }
 
-        bar.style.width =
-            (interactionState[currentInteraction] / INTERACTION_TIME * 100) + "%";
+        const progress = Math.min(
+            interactionState[currentInteraction] / INTERACTION_TIME,
+            1
+        );
+
+        bar.style.width = (progress * 100) + "%";
         container.style.display = "block";
+
     } else {
         container.style.display = "none";
+        bar.style.width = "0%";
     }
 
     const cam = createCamera(
