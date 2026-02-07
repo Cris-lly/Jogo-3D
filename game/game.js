@@ -214,6 +214,27 @@ addInteractionZone({
     maxZ: doorZ + doorDepth / 2 + 1.5
 });
 
+
+// =======================
+// JANELA (PAREDE DA FRENTE)
+// =======================
+const windowWidth  = 50;
+const windowHeight = 15;
+const windowDepth  = 0.5;
+
+// parede da frente → Z negativo
+const windowZ = -(roomDepth / 2) + 0.02;
+const windowY = 0;
+const windowX = 0;
+
+const windowPanel = createRect(
+    gl,
+    windowWidth,
+    windowHeight,
+    windowDepth,
+    [windowX, windowY, windowZ]
+);
+
 // =======================
 // UNIFORMS
 // =======================
@@ -342,6 +363,15 @@ function render() {
 
     gl.uniform4f(colorLoc, 0.4, 0.25, 0.1, 1.0);
     gl.drawElements(gl.LINES, door.lineCount, gl.UNSIGNED_SHORT, 0);
+    // =======================
+    // JANELA
+    // =======================
+    gl.bindBuffer(gl.ARRAY_BUFFER, windowPanel.vbo);
+    gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, windowPanel.ebo);
+    gl.vertexAttribPointer(posLoc, 3, gl.FLOAT, false, 0, 0);
+
+    gl.uniform4f(colorLoc, 0.05, 0.1, 0.2, 1.0); // azul escuro (espaço fake 👀)
+    gl.drawElements(gl.LINES, windowPanel.lineCount, gl.UNSIGNED_SHORT, 0);
 
     requestAnimationFrame(render);
 }
