@@ -23,41 +23,24 @@ const outlineColor = [0.043, 0.059, 0.129, 1.0]; // #0B0F21
 // CANVAS
 // =======================
 const canvas = document.getElementById("glCanvas");
-const modal  = document.getElementById("modalInfo");
-
+const modal = document.getElementById("modalInfo");
 canvas.width  = window.innerWidth;
 canvas.height = window.innerHeight;
 
-window.addEventListener("wheel", e => e.preventDefault(), { passive:false });
-
 // =======================
-// HUD / PROGRESS BAR
+// HUD / INTERAÇÃO
 // =======================
 const container = document.getElementById("progressContainer");
 const bar       = document.getElementById("progressBar");
 
 const INTERACTION_TIME = 120;
-
-// progresso independente por missão
-const interactionState = {
-    painel: 0,
-    electric: 0,
-    door: 0
-};
-
-// conclusão independente por missão
-const completed = {
-    painel: false,
-    electric: false,
-    door: false
-};
+const interactionState = { painel: 0, electric: 0, door: 0 };
 
 // =======================
 // WEBGL
 // =======================
 const gl = canvas.getContext("webgl");
 if (!gl) alert("WebGL não suportado");
-
 gl.viewport(0, 0, canvas.width, canvas.height);
 enableMouse(canvas);
 
@@ -65,13 +48,13 @@ enableMouse(canvas);
 // SHADERS
 // =======================
 function compileShader(type, src) {
-    const s = gl.createShader(type);
-    gl.shaderSource(s, src);
-    gl.compileShader(s);
-    if (!gl.getShaderParameter(s, gl.COMPILE_STATUS)) {
-        console.error(gl.getShaderInfoLog(s));
+    const shader = gl.createShader(type);
+    gl.shaderSource(shader, src);
+    gl.compileShader(shader);
+    if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS)) {
+        console.error(gl.getShaderInfoLog(shader));
     }
-    return s;
+    return shader;
 }
 
 const program = gl.createProgram();
@@ -108,11 +91,11 @@ function drawWireRect(rect, color) {
     gl.drawElements(gl.LINES, rect.lineCount, gl.UNSIGNED_SHORT, 0);
 }
 // =======================
-// SALA
+// DIMENSÕES DA SALA
 // =======================
-const roomWidth = 60;
+const roomWidth  = 60;
 const roomHeight = 30;
-const roomDepth = 90;
+const roomDepth  = 90;
 const wallThickness = 0.5;
 
 // =======================
@@ -135,15 +118,20 @@ const panelZ = -(roomDepth / 2) + wallThickness + panelD / 2 + 0.01; // encostad
 const panel = createWireRect(gl, panelW, panelH, panelD, [0, panelY, panelZ]);
 
 addObstacle({
-    minX:-20, maxX:20,
-    minY:-roomHeight/2, maxY:-roomHeight/2+6,
-    minZ:-roomDepth/2+0.5, maxZ:-roomDepth/2+6
+    minX: -panelW / 2,
+    maxX:  panelW / 2,
+    minY: panelY - panelH / 2,
+    maxY: panelY + panelH / 2,
+    minZ: panelZ - panelD / 2,
+    maxZ: panelZ + panelD / 2
 });
 
 addInteractionZone({
-    id:"painel",
-    minX:-20, maxX:20,
-    minZ:-roomDepth/2+2, maxZ:-roomDepth/2+8
+    id: "painel",
+    minX: -panelW / 2,
+    maxX:  panelW / 2,
+    minZ: panelZ - panelD / 2 - 1.5,
+    maxZ: panelZ + panelD / 2 + 1.5
 });
 
 // =======================
@@ -160,15 +148,20 @@ const electricPanel = createWireRect(
     [electricX, 0, 0]
 );
 addObstacle({
-    minX:roomWidth/2-2, maxX:roomWidth/2,
-    minY:-5, maxY:5,
-    minZ:-3, maxZ:3
+    minX: electricX - electricD / 2,
+    maxX: electricX + electricD / 2,
+    minY: -electricH / 2,
+    maxY:  electricH / 2,
+    minZ: -electricW / 2,
+    maxZ:  electricW / 2
 });
 
 addInteractionZone({
-    id:"electric",
-    minX:roomWidth/2-3, maxX:roomWidth/2,
-    minZ:-4, maxZ:4
+    id: "electric",
+    minX: electricX - electricD / 2 - 1.5,
+    maxX: electricX + electricD / 2 + 1.5,
+    minZ: -electricW / 2 - 1.5,
+    maxZ:  electricW / 2 + 1.5
 });
 
 // =======================
@@ -187,19 +180,24 @@ const door = createWireRect(
 
 
 addObstacle({
-    minX:-6, maxX:6,
-    minY:-roomHeight/2, maxY:-roomHeight/2+18,
-    minZ:roomDepth/2-2, maxZ:roomDepth/2
+    minX: -doorW / 2,
+    maxX:  doorW / 2,
+    minY: -(roomHeight / 2),
+    maxY: -(roomHeight / 2) + doorH,
+    minZ: doorZ - doorD / 2,
+    maxZ: doorZ + doorD / 2
 });
 
 addInteractionZone({
-    id:"door",
-    minX:-8, maxX:8,
-    minZ:roomDepth/2-4, maxZ:roomDepth/2
+    id: "door",
+    minX: -doorW / 2 - 1.5,
+    maxX:  doorW / 2 + 1.5,
+    minZ: doorZ - 2.5,
+    maxZ: doorZ + 2.5
 });
 
 // =======================
-// JANELA (VISUAL)
+// JANELA (VISUAL, SEM COLISÃO)
 // =======================
 const spaceWindow = createWireRect(gl, 50, 15, 0.1, [0, 0, -(roomDepth / 2) + wallThickness + 0.05]);
 const windowTexture = loadTexture(gl, "./assets/texture/universo.jpg");
@@ -207,25 +205,37 @@ const windowTexture = loadTexture(gl, "./assets/texture/universo.jpg");
 // =======================
 // ASTRONAUTA
 // =======================
-// =======================
-// POSIÇÃO DO ASTRONAUTA
-// =======================
-const objScale = 6.0;
-const objRotation = 80 * Math.PI / 180;
-
-const objX = -(roomWidth / 2) + 4;   // colado na parede esquerda
-const objY = -(roomHeight / 2) + 3;  // em cima do chão
-const objZ = 0;                      // meio da sala
-
 const floatAmplitude = 0.8;
 const floatSpeed = 0.002;
+let objeto = null;
 
-const astronautColor = [1, 1, 1, 1];
-let astronaut = null;
+const objWidth  = 4;
+const objHeight = 6;
+const objDepth  = 3;
+const objScale = 8.0; // 
+const objRotation = 80 * Math.PI / 180;
+const astronautColor = [1.0, 1.0, 1.0, 1.0]; // branco
 
-(async () => {
-    astronaut = await loadOBJ(gl, "./assets/models/astronaut.obj");
+
+const objX = -(roomWidth / 2) + (objWidth / 2); // lateral esquerda
+const objY = -(roomHeight / 2) + (objHeight / 2); // chão
+const objZ = 0;
+const floatY = Math.sin(performance.now() * floatSpeed) * floatAmplitude;
+addObstacle({
+    minX: objX - objWidth / 2,
+    maxX: objX + objWidth / 2,
+    minY: objY - objHeight / 2 + floatY,
+    maxY: objY + objHeight / 2 + floatY,
+    minZ: objZ - objDepth / 2,
+    maxZ: objZ + objDepth / 2
+});
+
+
+(async function loadModels() {
+    objeto = await loadOBJ(gl, "./assets/models/astronaut.obj");
 })();
+
+
 
 
 function distance(a, b) {
@@ -273,15 +283,16 @@ const textureLoc    = gl.getUniformLocation(program, "uTexture");
 
 
 // =======================
-// MATRIZES
+// MATRIZ / UTILIDADES
 // =======================
-function multiply(a,b){
-    const r=new Float32Array(16);
-    for(let i=0;i<4;i++)
-        for(let j=0;j<4;j++)
-            r[j*4+i]=a[i]*b[j*4]+a[i+4]*b[j*4+1]+a[i+8]*b[j*4+2]+a[i+12]*b[j*4+3];
+function multiply(a, b) {
+    const r = new Float32Array(16);
+    for (let i = 0; i < 4; i++)
+        for (let j = 0; j < 4; j++)
+            r[j*4+i] = a[i]*b[j*4] + a[i+4]*b[j*4+1] + a[i+8]*b[j*4+2] + a[i+12]*b[j*4+3];
     return r;
 }
+
 function translate(x, y, z) {
     return new Float32Array([
         1, 0, 0, 0,
@@ -303,52 +314,21 @@ function scaleMatrix(sx, sy, sz) {
 function rotateY(angle) {
     const c = Math.cos(angle);
     const s = Math.sin(angle);
-
     return new Float32Array([
-         c, 0, -s, 0,
-         0, 1,  0, 0,
-         s, 0,  c, 0,
-         0, 0,  0, 1
+        c, 0, -s, 0,
+        0, 1, 0, 0,
+        s, 0,  c, 0,
+        0, 0, 0, 1
     ]);
 }
-// =======================
-// WEBGL STATE
-// =======================
-gl.enable(gl.DEPTH_TEST);
-gl.clearColor(0.9,0.9,0.95,1);
 
-const transfLoc = gl.getUniformLocation(program,"transf");
-const colorLoc  = gl.getUniformLocation(program,"uColor");
-const posLoc    = gl.getAttribLocation(program,"aPosition");
-
-// =======================
-// DRAW
-// =======================
-function drawRect(r,c){
-    gl.bindBuffer(gl.ARRAY_BUFFER,r.vbo);
-    gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER,r.ebo);
-    gl.vertexAttribPointer(posLoc,3,gl.FLOAT,false,0,0);
-    gl.enableVertexAttribArray(posLoc);
-    gl.uniform4fv(colorLoc,c);
-    gl.drawElements(gl.LINES,r.lineCount,gl.UNSIGNED_SHORT,0);
-}
-
-// =======================
-// FASE 2 – SOLO LUNAR
-// =======================
-
-//chao da lua
-function drawRectFilled(r, c) {
-    gl.bindBuffer(gl.ARRAY_BUFFER, r.vbo);
-    gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, r.ebo);
-
+function drawRect(rect, color) {
+    gl.bindBuffer(gl.ARRAY_BUFFER, rect.vbo);
+    gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, rect.ebo);
     gl.vertexAttribPointer(posLoc, 3, gl.FLOAT, false, 0, 0);
     gl.enableVertexAttribArray(posLoc);
-
-    gl.uniform4fv(colorLoc, c);
-
-    // 🔑 TRIÂNGULOS, não linhas
-    gl.drawElements(gl.TRIANGLES, r.triangleCount, gl.UNSIGNED_SHORT, 0);
+    gl.uniform4fv(colorLoc, color);
+    gl.drawElements(gl.LINES, rect.lineCount, gl.UNSIGNED_SHORT, 0);
 }
 
 
@@ -409,29 +389,31 @@ const wallTexture = loadTexture(gl, "./assets/texture/parede.jpg");
 // =======================
 // RENDER LOOP
 // =======================
-function render(){
-    gl.clear(gl.COLOR_BUFFER_BIT|gl.DEPTH_BUFFER_BIT);
-
-        const proj = createPerspective(Math.PI/3, canvas.width/canvas.height, 0.1, 1000);
-        const dir  = updateCameraPosition();
-       if (currentState === GameState.OUTSIDE) {
-    container.style.display = "none";
-    bar.style.width = "0%";
-
-    gl.useProgram(program);           // 🔑 CORREÇÃO
-    gl.enable(gl.DEPTH_TEST);          // 🔑 CORREÇÃO
-
-    gl.clearColor(0.02, 0.02, 0.06, 1);
+function render() {
     gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
 
-    const proj = createPerspective(
-        Math.PI / 3,
-        canvas.width / canvas.height,
-        0.1,
-        5000
-    );
-
+    const proj = createPerspective(Math.PI / 3, canvas.width / canvas.height, 0.1, 1000);
     const dir = updateCameraPosition();
+
+    // ===== INTERAÇÃO =====
+    if (canInteract && currentInteraction) {
+        if (keys["e"]) {
+            interactionState[currentInteraction]++;
+            if (interactionState[currentInteraction] >= INTERACTION_TIME) {
+                interactionState[currentInteraction] = INTERACTION_TIME;
+                console.log("INTERAÇÃO CONCLUÍDA:", currentInteraction);
+            }
+        } else {
+            interactionState[currentInteraction] = 0;
+        }
+
+        const progress = Math.min(interactionState[currentInteraction] / INTERACTION_TIME, 1);
+        bar.style.width = (progress * 100) + "%";
+        container.style.display = "block";
+    } else {
+        container.style.display = "none";
+        bar.style.width = "0%";
+    }
 
     const cam = createCamera(
         camPos,
@@ -439,11 +421,7 @@ function render(){
         [0, 1, 0]
     );
 
-    const groundModel = translate(
-    camPos[0],
-    camPos[1] - 2,
-    camPos[2]
-);
+    gl.uniformMatrix4fv(transfLoc, false, multiply(proj, cam));
 
     // =======================
     // DESENHO SALA
@@ -474,45 +452,31 @@ function render(){
     drawTexturedSurface(spaceWindow, windowTexture);
 
     // =======================
-    // INTERAÇÃO (CORETO)
+    // DESENHO ASTRONAUTA
     // =======================
-    if (
-        canInteract &&
-        currentInteraction &&
-        !completed[currentInteraction]
-    ) {
-        if (keys["e"]) {
-            interactionState[currentInteraction]++;
+    if (objeto) {
+        const time = performance.now();
+        const floatY = Math.sin(time * floatSpeed) * floatAmplitude;
 
-            if (interactionState[currentInteraction] >= INTERACTION_TIME) {
-                completed[currentInteraction] = true;
-                interactionState[currentInteraction] = 0;
+        const S = scaleMatrix(objScale, objScale, objScale);
+        const R = rotateY(objRotation);
+        const T = translate(objX, objY + floatY, objZ);
 
-                container.style.display = "none";
-                bar.style.width = "0%";
+        const model = multiply(T, multiply(R, S));
 
-                console.log(`INTERAÇÃO CONCLUÍDA: ${currentInteraction}`);
+        gl.uniformMatrix4fv(transfLoc, false, multiply(proj, multiply(cam, model)));
+        gl.bindBuffer(gl.ARRAY_BUFFER, objeto.vbo);
+        gl.vertexAttribPointer(posLoc, 3, gl.FLOAT, false, 0, 0);
+        gl.enableVertexAttribArray(posLoc);
+
+        gl.uniform4fv(colorLoc, astronautColor);
+        gl.drawArrays(gl.TRIANGLES, 0, objeto.vertexCount);
 
         gl.uniform4fv(colorLoc, outlineColor);
         gl.drawArrays(gl.LINES, 0, objeto.vertexCount);
 
-    gl.uniformMatrix4fv(transfLoc,false,multiply(proj,cam));
 
-    // =======================
-    // DESENHO
-    // =======================
-    drawRect(wallFront,[.2,.2,.25,1]);
-    drawRect(wallBack,[.25,.2,.2,1]);
-    drawRect(wallLeft,[.2,.25,.2,1]);
-    drawRect(wallRight,[.2,.25,.25,1]);
-    drawRect(floor,[.15,.15,.15,1]);
-    drawRect(ceiling,[.3,.3,.3,1]);
-
-    drawRect(panel,[.2,.2,.2,1]);
-    drawRect(electricPanel,[.1,.4,.1,1]);
-    drawRect(door,[.4,.25,.1,1]);
-    drawRect(spaceWindow,[.1,.15,.3,1]);
-    const objWorldPos = [objX, objY, objZ];
+        const objWorldPos = [objX, objY, objZ];
     const d = distance(camPos, objWorldPos);
 
     const SHOW_DISTANCE = 12;
@@ -533,22 +497,7 @@ function render(){
         modal.style.top  = `${screenPos.y}px`;
         } else {
         modal.style.display = "none";
-    }
-      // =======================
-        if (astronaut) {
-        const time = performance.now();
-        const floatY = Math.sin(time * floatSpeed) * floatAmplitude;
-
-        const S = scaleMatrix(objScale, objScale, objScale);
-        const R = rotateY(objRotation);
-        const T = translate(objX, objY + floatY, objZ);
-
-        const model = multiply(T, multiply(R, S));
-        const mvp = multiply(proj, multiply(cam, model));
-
-        gl.uniformMatrix4fv(transfLoc, false, mvp);
-
-        gl.bindBuffer(gl.ARRAY_BUFFER, astronaut.vbo);
+         gl.bindBuffer(gl.ARRAY_BUFFER, objeto.vbo);
         gl.vertexAttribPointer(posLoc, 3, gl.FLOAT, false, 0, 0);
         gl.enableVertexAttribArray(posLoc);
 
@@ -556,13 +505,12 @@ function render(){
         // OBJETO SÓLIDO
         // =======================
         gl.uniform4fv(colorLoc, astronautColor);
-        gl.drawArrays(gl.TRIANGLES, 0, astronaut.vertexCount);
+        gl.drawArrays(gl.TRIANGLES, 0, objeto.vertexCount);
 
         // =======================
-        // WIREFRAME (LINHAS)
+        // WIREFRAME
         // =======================
         gl.uniform4f(colorLoc, 0.0, 0.0, 0.0, 1.0);
-        gl.drawArrays(gl.LINES, 0, astronaut.vertexCount);
     }
     }
 
@@ -575,5 +523,6 @@ function render(){
 export function stopGame() {
        running = false;
 }
+
 console.log("GAME.JS CARREGADO");
 render();
