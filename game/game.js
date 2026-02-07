@@ -13,22 +13,25 @@ import {
     addObstacle
 } from "../core/input.js";
 
+import { loadOBJ } from "../core/objLoader.js";
+
 // =======================
 // CANVAS
 // =======================
 const canvas = document.getElementById("glCanvas");
-canvas.width = window.innerWidth;
+const modal  = document.getElementById("modalInfo");
+
+canvas.width  = window.innerWidth;
 canvas.height = window.innerHeight;
 
 // =======================
 // HUD / INTERAÇÃO
 // =======================
 const container = document.getElementById("progressContainer");
-const bar = document.getElementById("progressBar");
+const bar       = document.getElementById("progressBar");
 
 const INTERACTION_TIME = 120;
 
-// progresso por objeto
 const interactionState = {
     painel: 0,
     electric: 0,
@@ -84,36 +87,34 @@ const ceiling   = createRect(gl, roomWidth, wallThickness, roomDepth, [0, +(room
 // =======================
 // PAINEL PRINCIPAL
 // =======================
-const panelWidth = 40;
-const panelHeight = 6;
-const panelDepth = 6;
+const panelW = 40;
+const panelH = 6;
+const panelD = 6;
 
-const panelY = -(roomHeight / 2) + panelHeight / 2;
-const panelZ = -(roomDepth / 2) + wallThickness + panelDepth / 2 + 0.01;
+const panelY = -(roomHeight / 2) + panelH / 2;
+const panelZ = -(roomDepth / 2) + wallThickness + panelD / 2 + 0.01;
 
-const panel = createRect(gl, panelWidth, panelHeight, panelDepth, [0, panelY, panelZ]);
+const panel = createRect(gl, panelW, panelH, panelD, [0, panelY, panelZ]);
 
 addObstacle({
-    minX: -panelWidth / 2,
-    maxX:  panelWidth / 2,
-    minY: panelY - panelHeight / 2,
-    maxY: panelY + panelHeight / 2,
-    minZ: panelZ - panelDepth / 2,
-    maxZ: panelZ + panelDepth / 2
+    minX: -panelW / 2,
+    maxX:  panelW / 2,
+    minY: panelY - panelH / 2,
+    maxY: panelY + panelH / 2,
+    minZ: panelZ - panelD / 2,
+    maxZ: panelZ + panelD / 2
 });
 
 addInteractionZone({
     id: "painel",
-    minX: -panelWidth / 2,
-    maxX:  panelWidth / 2,
-    minY: panelY - panelHeight / 2,
-    maxY: panelY + panelHeight / 2,
-    minZ: panelZ - panelDepth / 2 - 1.5,
-    maxZ: panelZ + panelDepth / 2 + 1.5
+    minX: -panelW / 2,
+    maxX:  panelW / 2,
+    minZ: panelZ - panelD / 2 - 1.5,
+    maxZ: panelZ + panelD / 2 + 1.5
 });
 
 // =======================
-// PAINEL ELÉTRICO (PAREDE DIREITA)
+// PAINEL ELÉTRICO
 // =======================
 const electricW = 6;
 const electricH = 10;
@@ -142,14 +143,12 @@ addInteractionZone({
     id: "electric",
     minX: electricX - electricD / 2 - 1.5,
     maxX: electricX + electricD / 2 + 1.5,
-    minY: -electricH / 2,
-    maxY:  electricH / 2,
     minZ: -electricW / 2 - 1.5,
     maxZ:  electricW / 2 + 1.5
 });
 
 // =======================
-// PORTA (PAREDE DE TRÁS)
+// PORTA
 // =======================
 const doorW = 12;
 const doorH = 18;
@@ -183,7 +182,7 @@ addInteractionZone({
 });
 
 // =======================
-// JANELA (PAREDE DA FRENTE)
+// JANELA
 // =======================
 const spaceWindow = createRect(
     gl,
@@ -192,6 +191,24 @@ const spaceWindow = createRect(
     0.1,
     [0, 0, -(roomDepth / 2) + wallThickness + 0.05]
 );
+
+// =======================
+// ASTRONAUTA
+// =======================
+let objeto = null;
+
+const objX = -(roomWidth / 2) + 4;
+const objY = -(roomHeight / 2) + 6;
+const objZ = 0;
+
+const objScale = 6;
+const objRotation = 80 * Math.PI / 180;
+const floatAmplitude = 0.8;
+const floatSpeed = 0.002;
+
+(async function () {
+    objeto = await loadOBJ(gl, "./assets/models/astronaut.obj");
+})();
 
 // =======================
 // WEBGL STATE
@@ -223,9 +240,6 @@ function multiply(a, b) {
     return r;
 }
 
-// =======================
-// DRAW
-// =======================
 function drawRect(rect, color) {
     gl.bindBuffer(gl.ARRAY_BUFFER, rect.vbo);
     gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, rect.ebo);
@@ -241,34 +255,19 @@ function drawRect(rect, color) {
 function render() {
     gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
 
-    const proj = createPerspective(
-        Math.PI / 3,
-        canvas.width / canvas.height,
-        0.1,
-        1000
-    );
-
+    const proj = createPerspective(Math.PI / 3, canvas.width / canvas.height, 0.1, 1000);
     const dir = updateCameraPosition();
 
-    // =======================
-    // INTERAÇÃO + PROGRESS BAR
-    // =======================
     if (canInteract && currentInteraction) {
-
         if (keys["e"]) {
             interactionState[currentInteraction]++;
-
-            if (interactionState[currentInteraction] >= INTERACTION_TIME) {
-                interactionState[currentInteraction] = INTERACTION_TIME;
-                console.log("INTERAÇÃO CONCLUÍDA:", currentInteraction);
-            }
         } else {
             interactionState[currentInteraction] = 0;
         }
 
-        container.style.display = "block";
         bar.style.width =
             (interactionState[currentInteraction] / INTERACTION_TIME * 100) + "%";
+        container.style.display = "block";
     } else {
         container.style.display = "none";
     }
@@ -281,9 +280,6 @@ function render() {
 
     gl.uniformMatrix4fv(transfLoc, false, multiply(proj, cam));
 
-    // =======================
-    // DESENHO
-    // =======================
     drawRect(wallFront,  [0.2, 0.2, 0.25, 1]);
     drawRect(wallBack,   [0.25, 0.2, 0.2, 1]);
     drawRect(wallLeft,   [0.2, 0.25, 0.2, 1]);
@@ -291,10 +287,10 @@ function render() {
     drawRect(floor,      [0.15, 0.15, 0.15, 1]);
     drawRect(ceiling,    [0.3, 0.3, 0.3, 1]);
 
-    drawRect(panel,          [0.2, 0.2, 0.2, 1]);
-    drawRect(electricPanel,  [0.1, 0.4, 0.1, 1]);
-    drawRect(door,           [0.4, 0.25, 0.1, 1]);
-    drawRect(spaceWindow,    [0.1, 0.15, 0.3, 1]);
+    drawRect(panel,         [0.2, 0.2, 0.2, 1]);
+    drawRect(electricPanel, [0.1, 0.4, 0.1, 1]);
+    drawRect(door,          [0.4, 0.25, 0.1, 1]);
+    drawRect(spaceWindow,   [0.1, 0.15, 0.3, 1]);
 
     requestAnimationFrame(render);
 }
