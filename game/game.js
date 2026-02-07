@@ -2,8 +2,9 @@
 import { vertexShaderSrc, fragmentShaderSrc } from "../core/shaders.js";
 import { createPerspective } from "../math/math3d.js";
 import { createCamera } from "../core/camera.js";
-import { createRect } from "../core/cube.js";
-import { GameState, currentState, goOutside } from "./moon.js";
+import { createRect, createWireRect } from "../core/cube.js";
+import { loadTexture } from "../core/loadTexture.js";
+
 import {
     camPos,
     enableMouse,
@@ -15,7 +16,9 @@ import {
     addObstacle
 } from "../core/input.js";
 import { loadOBJ } from "../core/objLoader.js";
+let running = true;
 
+const outlineColor = [0.043, 0.059, 0.129, 1.0]; // #0B0F21
 // =======================
 // CANVAS
 // =======================
@@ -77,6 +80,33 @@ gl.attachShader(program, compileShader(gl.FRAGMENT_SHADER, fragmentShaderSrc));
 gl.linkProgram(program);
 gl.useProgram(program);
 
+
+
+function drawSolidRect(rect, color) {
+    gl.uniform1i(useTexLoc, false);
+    gl.uniform4fv(colorLoc, color);
+
+    // vértices
+    gl.bindBuffer(gl.ARRAY_BUFFER, rect.vbo);
+    gl.vertexAttribPointer(posLoc, 3, gl.FLOAT, false, 0, 0);
+    gl.enableVertexAttribArray(posLoc);
+
+    // triângulos
+    gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, rect.ebo);
+    gl.drawElements(gl.TRIANGLES, rect.indexCount, gl.UNSIGNED_SHORT, 0);
+}
+
+function drawWireRect(rect, color) {
+    gl.uniform1i(useTexLoc, false);
+    gl.uniform4fv(colorLoc, color);
+
+    gl.bindBuffer(gl.ARRAY_BUFFER, rect.vbo);
+    gl.vertexAttribPointer(posLoc, 3, gl.FLOAT, false, 0, 0);
+    gl.enableVertexAttribArray(posLoc);
+
+    gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, rect.lbo);
+    gl.drawElements(gl.LINES, rect.lineCount, gl.UNSIGNED_SHORT, 0);
+}
 // =======================
 // SALA
 // =======================
@@ -85,29 +115,24 @@ const roomHeight = 30;
 const roomDepth = 90;
 const wallThickness = 0.5;
 
-const wallFront = createRect(gl, roomWidth, roomHeight, wallThickness, [0,0,-roomDepth/2]);
-const wallBack  = createRect(gl, roomWidth, roomHeight, wallThickness, [0,0, roomDepth/2]);
-const wallLeft  = createRect(gl, wallThickness, roomHeight, roomDepth, [-roomWidth/2,0,0]);
-const wallRight = createRect(gl, wallThickness, roomHeight, roomDepth, [ roomWidth/2,0,0]);
-const floor     = createRect(gl, roomWidth, wallThickness, roomDepth, [0,-roomHeight/2,0]);
-const ceiling   = createRect(gl, roomWidth, wallThickness, roomDepth, [0, roomHeight/2,0]);
-
-//CHAO DA LUA
-const moonGround = createRect(
-    gl,
-    2000,
-    0.1,
-    2000,
-    [0, 0, 0]
-);
-
+// =======================
+// PAREDES
+// =======================
+const wallFront = createWireRect(gl, roomWidth, roomHeight, wallThickness, [0, 0, -(roomDepth / 2)]);
+const wallBack  = createWireRect(gl, roomWidth, roomHeight, wallThickness, [0, 0, +(roomDepth / 2)]);
+const wallLeft  = createWireRect(gl, wallThickness, roomHeight, roomDepth, [-(roomWidth / 2), 0, 0]);
+const wallRight = createWireRect(gl, wallThickness, roomHeight, roomDepth, [+(roomWidth / 2), 0, 0]);
+const floor     = createWireRect(gl, roomWidth, wallThickness, roomDepth, [0, -(roomHeight / 2), 0]);
+const ceiling   = createWireRect(gl, roomWidth, wallThickness, roomDepth, [0, +(roomHeight / 2), 0]);
+const ceilingTexture = loadTexture(gl, "./assets/texture/teto.jpg");
 // =======================
 // PAINEL PRINCIPAL
 // =======================
-const panel = createRect(
-    gl, 40, 6, 6,
-    [0, -roomHeight/2 + 3, -roomDepth/2 + wallThickness + 3]
-);
+const panelW = 40, panelH = 6, panelD = 6;
+const panelY = -(roomHeight / 2) + panelH / 2; // encostado no chão
+const panelZ = -(roomDepth / 2) + wallThickness + panelD / 2 + 0.01; // encostado na parede
+
+const panel = createWireRect(gl, panelW, panelH, panelD, [0, panelY, panelZ]);
 
 addObstacle({
     minX:-20, maxX:20,
@@ -124,11 +149,16 @@ addInteractionZone({
 // =======================
 // PAINEL ELÉTRICO
 // =======================
-const electricPanel = createRect(
-    gl, 2, 10, 6,
-    [roomWidth/2 - 1, 0, 0]
-);
+const electricW = 6, electricH = 10, electricD = 2;
+const electricX = (roomWidth / 2) - wallThickness - electricD / 2 - 0.01;
 
+const electricPanel = createWireRect(
+    gl,
+    electricD,
+    electricH,
+    electricW,
+    [electricX, 0, 0]
+);
 addObstacle({
     minX:roomWidth/2-2, maxX:roomWidth/2,
     minY:-5, maxY:5,
@@ -144,10 +174,17 @@ addInteractionZone({
 // =======================
 // PORTA
 // =======================
-const door = createRect(
-    gl, 12, 18, 2,
-    [0, -roomHeight/2 + 9, roomDepth/2 - 1]
+const doorW = 12, doorH = 18, doorD = 2;
+const doorZ = +(roomDepth / 2) - wallThickness - doorD / 2 - 0.01;
+
+const door = createWireRect(
+  gl,
+  doorW,
+  doorH,
+  doorD,
+  [0, -(roomHeight / 2) + doorH / 2, doorZ]
 );
+
 
 addObstacle({
     minX:-6, maxX:6,
@@ -164,10 +201,8 @@ addInteractionZone({
 // =======================
 // JANELA (VISUAL)
 // =======================
-const spaceWindow = createRect(
-    gl, 50, 15, 0.1,
-    [0, 0, -roomDepth/2 + wallThickness + 0.05]
-);
+const spaceWindow = createWireRect(gl, 50, 15, 0.1, [0, 0, -(roomDepth / 2) + wallThickness + 0.05]);
+const windowTexture = loadTexture(gl, "./assets/texture/universo.jpg");
 
 // =======================
 // ASTRONAUTA
@@ -220,6 +255,22 @@ function worldToScreen(pos, viewProj, width, height) {
     y: (-ndcY * 0.5 + 0.5) * height
   };
 }
+
+
+
+// =======================
+// WEBGL STATE
+// =======================
+gl.enable(gl.DEPTH_TEST);
+gl.clearColor(0.961, 0.961, 0.961, 1.0);
+
+const transfLoc = gl.getUniformLocation(program, "transf");
+const colorLoc  = gl.getUniformLocation(program, "uColor");
+const posLoc    = gl.getAttribLocation(program, "aPosition");
+const texLoc        = gl.getAttribLocation(program, "aTexCoord");
+const useTexLoc     = gl.getUniformLocation(program, "uUseTexture");
+const textureLoc    = gl.getUniformLocation(program, "uTexture");
+
 
 // =======================
 // MATRIZES
@@ -300,6 +351,61 @@ function drawRectFilled(r, c) {
     gl.drawElements(gl.TRIANGLES, r.triangleCount, gl.UNSIGNED_SHORT, 0);
 }
 
+
+function drawTexturedRect(rect) {
+    gl.uniform1i(useTexLoc, true);
+
+    gl.activeTexture(gl.TEXTURE0);
+    gl.bindTexture(gl.TEXTURE_2D, floorTexture);
+    gl.uniform1i(textureLoc, 0);
+
+    // posição
+    gl.bindBuffer(gl.ARRAY_BUFFER, rect.vbo);
+    gl.vertexAttribPointer(posLoc, 3, gl.FLOAT, false, 0, 0);
+    gl.enableVertexAttribArray(posLoc);
+
+    // UV
+    gl.bindBuffer(gl.ARRAY_BUFFER, rect.tbo);
+    gl.vertexAttribPointer(texLoc, 2, gl.FLOAT, false, 0, 0);
+    gl.enableVertexAttribArray(texLoc);
+
+    // triângulos
+    gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, rect.ebo);
+    gl.drawElements(gl.TRIANGLES, rect.indexCount, gl.UNSIGNED_SHORT, 0);
+
+    gl.uniform1i(useTexLoc, false);
+}
+
+function drawTexturedSurface(rect, texture) {
+    gl.uniform1i(useTexLoc, true);
+
+    gl.activeTexture(gl.TEXTURE0);
+    gl.bindTexture(gl.TEXTURE_2D, texture);
+    gl.uniform1i(textureLoc, 0);
+
+    // posição
+    gl.bindBuffer(gl.ARRAY_BUFFER, rect.vbo);
+    gl.vertexAttribPointer(posLoc, 3, gl.FLOAT, false, 0, 0);
+    gl.enableVertexAttribArray(posLoc);
+
+    // UV
+    gl.bindBuffer(gl.ARRAY_BUFFER, rect.tbo);
+    gl.vertexAttribPointer(texLoc, 2, gl.FLOAT, false, 0, 0);
+    gl.enableVertexAttribArray(texLoc);
+
+    // triângulos
+    gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, rect.ebo);
+    gl.drawElements(gl.TRIANGLES, rect.indexCount, gl.UNSIGNED_SHORT, 0);
+
+    gl.uniform1i(useTexLoc, false);
+}
+
+const floorTexture = loadTexture(gl, "./assets/texture/piso (1).jpg");
+
+gl.enable(gl.DEPTH_TEST);
+gl.activeTexture(gl.TEXTURE0);
+
+const wallTexture = loadTexture(gl, "./assets/texture/parede.jpg");
 // =======================
 // RENDER LOOP
 // =======================
@@ -339,20 +445,33 @@ function render(){
     camPos[2]
 );
 
-    const mvp = multiply(proj, multiply(cam, groundModel));
-    gl.uniformMatrix4fv(transfLoc, false, mvp);
+    // =======================
+    // DESENHO SALA
+    // =======================
+    // paredes com textura
+    drawTexturedSurface(wallFront, wallTexture);
+    drawTexturedSurface(wallBack,  wallTexture);
+    drawTexturedSurface(wallLeft,  wallTexture);
+    drawTexturedSurface(wallRight, wallTexture);
 
-    drawRectFilled(moonGround, [0.32, 0.32, 0.32, 1]);
 
-    requestAnimationFrame(render);
-    return;
-}
+    drawTexturedRect(floor); // 👈 chão com imagem
 
-    const cam = createCamera(
-        camPos,
-        [camPos[0]+dir[0], camPos[1]+dir[1], camPos[2]+dir[2]],
-        [0,1,0]
-    );
+    drawTexturedSurface(ceiling,    ceilingTexture);
+
+
+    drawSolidRect(panel,         [0.208, 0.235, 0.388, 1.0]);
+    drawWireRect(panel, outlineColor);
+
+    // painel elétrico sólido
+    drawSolidRect(electricPanel, [0.741, 0.808, 0.910, 1.0]);
+    drawWireRect(electricPanel, outlineColor);
+
+    drawSolidRect(door,          [0.729, 0.749, 0.776, 1.0]);
+    drawWireRect(door, outlineColor);
+
+
+    drawTexturedSurface(spaceWindow, windowTexture);
 
     // =======================
     // INTERAÇÃO (CORETO)
@@ -374,21 +493,8 @@ function render(){
 
                 console.log(`INTERAÇÃO CONCLUÍDA: ${currentInteraction}`);
 
-                if (currentInteraction === "door") {
-                         goOutside();
-                    }
-            }
-        } else {
-            interactionState[currentInteraction] = 0;
-        }
-        
-        const p = interactionState[currentInteraction] / INTERACTION_TIME;
-        bar.style.width = `${Math.min(p,1)*100}%`;
-        container.style.display = "block";
-    } else {
-        container.style.display = "none";
-        bar.style.width = "0%";
-    }
+        gl.uniform4fv(colorLoc, outlineColor);
+        gl.drawArrays(gl.LINES, 0, objeto.vertexCount);
 
     gl.uniformMatrix4fv(transfLoc,false,multiply(proj,cam));
 
@@ -458,8 +564,16 @@ function render(){
         gl.uniform4f(colorLoc, 0.0, 0.0, 0.0, 1.0);
         gl.drawArrays(gl.LINES, 0, astronaut.vertexCount);
     }
-      requestAnimationFrame(render);
-   
+    }
+
+    if (running) {
+        requestAnimationFrame(render);
+    }
+
+}
+
+export function stopGame() {
+       running = false;
 }
 console.log("GAME.JS CARREGADO");
 render();

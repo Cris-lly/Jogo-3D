@@ -1,3 +1,35 @@
+await import("../game/game.js");
+
+
+let currentGame = "sala";
+
+
+const canvas = document.getElementById("glCanvas");
+
+
+canvas.tabIndex = 1; // permite foco
+canvas.focus();
+
+
+canvas.addEventListener("keydown", async (e) => {
+  if (e.key === "l" || e.key === "L") {
+      console.log("Tecla:", e.key);
+        if (currentGame === "sala") {
+            currentGame = "lua";
+
+
+            // para o jogo atual
+            const sala = await import("../game/game.js");
+            sala.stopGame();
+
+
+            // carrega a lua
+            await import("../game/gameLua.js");
+        }
+    }
+});
+
+
 // Botões principais
 console.log("GAME INICIADO");
 
