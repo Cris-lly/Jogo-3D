@@ -1,4 +1,6 @@
 html, body {
+  overflow: hidden;
+  height: 100%;
   margin: 0;
   padding: 0;
   width: 100%;
@@ -27,6 +29,31 @@ body {
 }
 /* ==================================================== */
 
+/* PROGRESS BAR */
+#hud {
+    position: fixed;
+    bottom: 40px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 300px;
+    pointer-events: none;
+}
+
+#progressContainer {
+    width: 100%;
+    height: 20px;
+    background: rgba(0,0,0,0.3);
+    border: 2px solid #333;
+    display: none;
+}
+
+#progressBar {
+    height: 100%;
+    width: 0%;
+    background: #4caf50;
+}
+/* ==================================================== */
+
 #modalInfo {
   position: absolute;
   background: rgba(0,0,0,0.8);
@@ -39,3 +66,4 @@ body {
   display: none;
   white-space: nowrap;
 }
+
