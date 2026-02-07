@@ -2,7 +2,9 @@
 import { vertexShaderSrc, fragmentShaderSrc } from "../core/shaders.js";
 import { createPerspective } from "../math/math3d.js";
 import { createCamera } from "../core/camera.js";
-import { createRect } from "../core/cube.js";
+import { createRect, createWireRect } from "../core/cube.js";
+import { loadTexture } from "../core/loadTexture.js";
+
 import {
     camPos,
     enableMouse,
@@ -15,6 +17,8 @@ import {
 } from "../core/input.js";
 import { loadOBJ } from "../core/objLoader.js";
 
+
+const outlineColor = [0.043, 0.059, 0.129, 1.0]; // #0B0F21
 // =======================
 // CANVAS
 // =======================
@@ -59,6 +63,33 @@ gl.attachShader(program, compileShader(gl.FRAGMENT_SHADER, fragmentShaderSrc));
 gl.linkProgram(program);
 gl.useProgram(program);
 
+
+
+function drawSolidRect(rect, color) {
+    gl.uniform1i(useTexLoc, false);
+    gl.uniform4fv(colorLoc, color);
+
+    // vértices
+    gl.bindBuffer(gl.ARRAY_BUFFER, rect.vbo);
+    gl.vertexAttribPointer(posLoc, 3, gl.FLOAT, false, 0, 0);
+    gl.enableVertexAttribArray(posLoc);
+
+    // triângulos
+    gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, rect.ebo);
+    gl.drawElements(gl.TRIANGLES, rect.indexCount, gl.UNSIGNED_SHORT, 0);
+}
+
+function drawWireRect(rect, color) {
+    gl.uniform1i(useTexLoc, false);
+    gl.uniform4fv(colorLoc, color);
+
+    gl.bindBuffer(gl.ARRAY_BUFFER, rect.vbo);
+    gl.vertexAttribPointer(posLoc, 3, gl.FLOAT, false, 0, 0);
+    gl.enableVertexAttribArray(posLoc);
+
+    gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, rect.lbo);
+    gl.drawElements(gl.LINES, rect.lineCount, gl.UNSIGNED_SHORT, 0);
+}
 // =======================
 // DIMENSÕES DA SALA
 // =======================
@@ -70,13 +101,13 @@ const wallThickness = 0.5;
 // =======================
 // PAREDES
 // =======================
-const wallFront = createRect(gl, roomWidth, roomHeight, wallThickness, [0, 0, -(roomDepth / 2)]);
-const wallBack  = createRect(gl, roomWidth, roomHeight, wallThickness, [0, 0, +(roomDepth / 2)]);
-const wallLeft  = createRect(gl, wallThickness, roomHeight, roomDepth, [-(roomWidth / 2), 0, 0]);
-const wallRight = createRect(gl, wallThickness, roomHeight, roomDepth, [+(roomWidth / 2), 0, 0]);
-const floor     = createRect(gl, roomWidth, wallThickness, roomDepth, [0, -(roomHeight / 2), 0]);
-const ceiling   = createRect(gl, roomWidth, wallThickness, roomDepth, [0, +(roomHeight / 2), 0]);
-
+const wallFront = createWireRect(gl, roomWidth, roomHeight, wallThickness, [0, 0, -(roomDepth / 2)]);
+const wallBack  = createWireRect(gl, roomWidth, roomHeight, wallThickness, [0, 0, +(roomDepth / 2)]);
+const wallLeft  = createWireRect(gl, wallThickness, roomHeight, roomDepth, [-(roomWidth / 2), 0, 0]);
+const wallRight = createWireRect(gl, wallThickness, roomHeight, roomDepth, [+(roomWidth / 2), 0, 0]);
+const floor     = createWireRect(gl, roomWidth, wallThickness, roomDepth, [0, -(roomHeight / 2), 0]);
+const ceiling   = createWireRect(gl, roomWidth, wallThickness, roomDepth, [0, +(roomHeight / 2), 0]);
+const ceilingTexture = loadTexture(gl, "./assets/texture/teto.jpg");
 // =======================
 // PAINEL PRINCIPAL
 // =======================
@@ -84,7 +115,7 @@ const panelW = 40, panelH = 6, panelD = 6;
 const panelY = -(roomHeight / 2) + panelH / 2; // encostado no chão
 const panelZ = -(roomDepth / 2) + wallThickness + panelD / 2 + 0.01; // encostado na parede
 
-const panel = createRect(gl, panelW, panelH, panelD, [0, panelY, panelZ]);
+const panel = createWireRect(gl, panelW, panelH, panelD, [0, panelY, panelZ]);
 
 addObstacle({
     minX: -panelW / 2,
@@ -109,8 +140,13 @@ addInteractionZone({
 const electricW = 6, electricH = 10, electricD = 2;
 const electricX = (roomWidth / 2) - wallThickness - electricD / 2 - 0.01;
 
-const electricPanel = createRect(gl, electricD, electricH, electricW, [electricX, 0, 0]);
-
+const electricPanel = createWireRect(
+    gl,
+    electricD,
+    electricH,
+    electricW,
+    [electricX, 0, 0]
+);
 addObstacle({
     minX: electricX - electricD / 2,
     maxX: electricX + electricD / 2,
@@ -134,7 +170,14 @@ addInteractionZone({
 const doorW = 12, doorH = 18, doorD = 2;
 const doorZ = +(roomDepth / 2) - wallThickness - doorD / 2 - 0.01;
 
-const door = createRect(gl, doorW, doorH, doorD, [0, -(roomHeight / 2) + doorH / 2, doorZ]);
+const door = createWireRect(
+  gl,
+  doorW,
+  doorH,
+  doorD,
+  [0, -(roomHeight / 2) + doorH / 2, doorZ]
+);
+
 
 addObstacle({
     minX: -doorW / 2,
@@ -156,7 +199,8 @@ addInteractionZone({
 // =======================
 // JANELA (VISUAL, SEM COLISÃO)
 // =======================
-const spaceWindow = createRect(gl, 50, 15, 0.1, [0, 0, -(roomDepth / 2) + wallThickness + 0.05]);
+const spaceWindow = createWireRect(gl, 50, 15, 0.1, [0, 0, -(roomDepth / 2) + wallThickness + 0.05]);
+const windowTexture = loadTexture(gl, "./assets/texture/universo.jpg");
 
 // =======================
 // ASTRONAUTA
@@ -228,11 +272,15 @@ function worldToScreen(pos, viewProj, width, height) {
 // WEBGL STATE
 // =======================
 gl.enable(gl.DEPTH_TEST);
-gl.clearColor(0.9, 0.9, 0.95, 1.0);
+gl.clearColor(0.961, 0.961, 0.961, 1.0);
 
 const transfLoc = gl.getUniformLocation(program, "transf");
 const colorLoc  = gl.getUniformLocation(program, "uColor");
 const posLoc    = gl.getAttribLocation(program, "aPosition");
+const texLoc        = gl.getAttribLocation(program, "aTexCoord");
+const useTexLoc     = gl.getUniformLocation(program, "uUseTexture");
+const textureLoc    = gl.getUniformLocation(program, "uTexture");
+
 
 // =======================
 // MATRIZ / UTILIDADES
@@ -283,6 +331,61 @@ function drawRect(rect, color) {
     gl.drawElements(gl.LINES, rect.lineCount, gl.UNSIGNED_SHORT, 0);
 }
 
+
+function drawTexturedRect(rect) {
+    gl.uniform1i(useTexLoc, true);
+
+    gl.activeTexture(gl.TEXTURE0);
+    gl.bindTexture(gl.TEXTURE_2D, floorTexture);
+    gl.uniform1i(textureLoc, 0);
+
+    // posição
+    gl.bindBuffer(gl.ARRAY_BUFFER, rect.vbo);
+    gl.vertexAttribPointer(posLoc, 3, gl.FLOAT, false, 0, 0);
+    gl.enableVertexAttribArray(posLoc);
+
+    // UV
+    gl.bindBuffer(gl.ARRAY_BUFFER, rect.tbo);
+    gl.vertexAttribPointer(texLoc, 2, gl.FLOAT, false, 0, 0);
+    gl.enableVertexAttribArray(texLoc);
+
+    // triângulos
+    gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, rect.ebo);
+    gl.drawElements(gl.TRIANGLES, rect.indexCount, gl.UNSIGNED_SHORT, 0);
+
+    gl.uniform1i(useTexLoc, false);
+}
+
+function drawTexturedSurface(rect, texture) {
+    gl.uniform1i(useTexLoc, true);
+
+    gl.activeTexture(gl.TEXTURE0);
+    gl.bindTexture(gl.TEXTURE_2D, texture);
+    gl.uniform1i(textureLoc, 0);
+
+    // posição
+    gl.bindBuffer(gl.ARRAY_BUFFER, rect.vbo);
+    gl.vertexAttribPointer(posLoc, 3, gl.FLOAT, false, 0, 0);
+    gl.enableVertexAttribArray(posLoc);
+
+    // UV
+    gl.bindBuffer(gl.ARRAY_BUFFER, rect.tbo);
+    gl.vertexAttribPointer(texLoc, 2, gl.FLOAT, false, 0, 0);
+    gl.enableVertexAttribArray(texLoc);
+
+    // triângulos
+    gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, rect.ebo);
+    gl.drawElements(gl.TRIANGLES, rect.indexCount, gl.UNSIGNED_SHORT, 0);
+
+    gl.uniform1i(useTexLoc, false);
+}
+
+const floorTexture = loadTexture(gl, "./assets/texture/piso (1).jpg");
+
+gl.enable(gl.DEPTH_TEST);
+gl.activeTexture(gl.TEXTURE0);
+
+const wallTexture = loadTexture(gl, "./assets/texture/parede.jpg");
 // =======================
 // RENDER LOOP
 // =======================
@@ -323,17 +426,30 @@ function render() {
     // =======================
     // DESENHO SALA
     // =======================
-    drawRect(wallFront,  [0.2, 0.2, 0.25, 1]);
-    drawRect(wallBack,   [0.25, 0.2, 0.2, 1]);
-    drawRect(wallLeft,   [0.2, 0.25, 0.2, 1]);
-    drawRect(wallRight,  [0.2, 0.25, 0.25, 1]);
-    drawRect(floor,      [0.15, 0.15, 0.15, 1]);
-    drawRect(ceiling,    [0.3, 0.3, 0.3, 1]);
+    // paredes com textura
+    drawTexturedSurface(wallFront, wallTexture);
+    drawTexturedSurface(wallBack,  wallTexture);
+    drawTexturedSurface(wallLeft,  wallTexture);
+    drawTexturedSurface(wallRight, wallTexture);
 
-    drawRect(panel,         [0.2, 0.2, 0.2, 1]);
-    drawRect(electricPanel, [0.1, 0.4, 0.1, 1]);
-    drawRect(door,          [0.4, 0.25, 0.1, 1]);
-    drawRect(spaceWindow,   [0.1, 0.15, 0.3, 1]);
+
+    drawTexturedRect(floor); // 👈 chão com imagem
+
+    drawTexturedSurface(ceiling,    ceilingTexture);
+
+
+    drawSolidRect(panel,         [0.208, 0.235, 0.388, 1.0]);
+    drawWireRect(panel, outlineColor);
+
+    // painel elétrico sólido
+    drawSolidRect(electricPanel, [0.741, 0.808, 0.910, 1.0]);
+    drawWireRect(electricPanel, outlineColor);
+
+    drawSolidRect(door,          [0.729, 0.749, 0.776, 1.0]);
+    drawWireRect(door, outlineColor);
+
+
+    drawTexturedSurface(spaceWindow, windowTexture);
 
     // =======================
     // DESENHO ASTRONAUTA
@@ -356,7 +472,7 @@ function render() {
         gl.uniform4fv(colorLoc, astronautColor);
         gl.drawArrays(gl.TRIANGLES, 0, objeto.vertexCount);
 
-        gl.uniform4f(colorLoc, 0, 0, 0, 1);
+        gl.uniform4fv(colorLoc, outlineColor);
         gl.drawArrays(gl.LINES, 0, objeto.vertexCount);
 
 
