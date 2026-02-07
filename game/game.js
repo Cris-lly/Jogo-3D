@@ -3,6 +3,7 @@ import { vertexShaderSrc, fragmentShaderSrc } from "../core/shaders.js";
 import { createPerspective } from "../math/math3d.js";
 import { createCamera } from "../core/camera.js";
 import { createRect } from "../core/cube.js";
+import { GameState, currentState, goOutside } from "./moon.js";
 import {
     camPos,
     enableMouse,
@@ -90,6 +91,15 @@ const wallLeft  = createRect(gl, wallThickness, roomHeight, roomDepth, [-roomWid
 const wallRight = createRect(gl, wallThickness, roomHeight, roomDepth, [ roomWidth/2,0,0]);
 const floor     = createRect(gl, roomWidth, wallThickness, roomDepth, [0,-roomHeight/2,0]);
 const ceiling   = createRect(gl, roomWidth, wallThickness, roomDepth, [0, roomHeight/2,0]);
+
+//CHAO DA LUA
+const moonGround = createRect(
+    gl,
+    2000,
+    0.1,
+    2000,
+    [0, 0, 0]
+);
 
 // =======================
 // PAINEL PRINCIPAL
@@ -272,6 +282,23 @@ function drawRect(r,c){
     gl.drawElements(gl.LINES,r.lineCount,gl.UNSIGNED_SHORT,0);
 }
 
+// =======================
+// FASE 2 – SOLO LUNAR
+// =======================
+
+//chao da lua
+function drawRectFilled(r, c) {
+    gl.bindBuffer(gl.ARRAY_BUFFER, r.vbo);
+    gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, r.ebo);
+
+    gl.vertexAttribPointer(posLoc, 3, gl.FLOAT, false, 0, 0);
+    gl.enableVertexAttribArray(posLoc);
+
+    gl.uniform4fv(colorLoc, c);
+
+    // 🔑 TRIÂNGULOS, não linhas
+    gl.drawElements(gl.TRIANGLES, r.triangleCount, gl.UNSIGNED_SHORT, 0);
+}
 
 // =======================
 // RENDER LOOP
@@ -279,8 +306,47 @@ function drawRect(r,c){
 function render(){
     gl.clear(gl.COLOR_BUFFER_BIT|gl.DEPTH_BUFFER_BIT);
 
-    const proj = createPerspective(Math.PI/3, canvas.width/canvas.height, 0.1, 1000);
-    const dir  = updateCameraPosition();
+        const proj = createPerspective(Math.PI/3, canvas.width/canvas.height, 0.1, 1000);
+        const dir  = updateCameraPosition();
+       if (currentState === GameState.OUTSIDE) {
+    container.style.display = "none";
+    bar.style.width = "0%";
+
+    gl.useProgram(program);           // 🔑 CORREÇÃO
+    gl.enable(gl.DEPTH_TEST);          // 🔑 CORREÇÃO
+
+    gl.clearColor(0.02, 0.02, 0.06, 1);
+    gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+
+    const proj = createPerspective(
+        Math.PI / 3,
+        canvas.width / canvas.height,
+        0.1,
+        5000
+    );
+
+    const dir = updateCameraPosition();
+
+    const cam = createCamera(
+        camPos,
+        [camPos[0] + dir[0], camPos[1] + dir[1], camPos[2] + dir[2]],
+        [0, 1, 0]
+    );
+
+    const groundModel = translate(
+    camPos[0],
+    camPos[1] - 2,
+    camPos[2]
+);
+
+    const mvp = multiply(proj, multiply(cam, groundModel));
+    gl.uniformMatrix4fv(transfLoc, false, mvp);
+
+    drawRectFilled(moonGround, [0.32, 0.32, 0.32, 1]);
+
+    requestAnimationFrame(render);
+    return;
+}
 
     const cam = createCamera(
         camPos,
@@ -309,10 +375,8 @@ function render(){
                 console.log(`INTERAÇÃO CONCLUÍDA: ${currentInteraction}`);
 
                 if (currentInteraction === "door") {
-                    setTimeout(() => {
-                        window.location.href = "fase2.html";
-                    }, 500);
-                }
+                         goOutside();
+                    }
             }
         } else {
             interactionState[currentInteraction] = 0;
