@@ -5,7 +5,7 @@ let currentGame = "sala";
 
 
 const canvas = document.getElementById("glCanvas");
-
+const encerramento = document.getElementById("missao-6")
 
 canvas.tabIndex = 1; // permite foco
 canvas.focus();
@@ -29,6 +29,15 @@ canvas.addEventListener("keydown", async (e) => {
             });
             
             await import("../game/gameLua.js");
+            // demorar 2 SEGUNDOS após entrar na lua para exibir modal 
+            setTimeout(() => {
+              encerramento.style.display = "flex";
+              setTimeout(() => {
+                window.close();
+              }, 10000);
+            }, 2000);
+
+
         }
     }
 });
@@ -97,9 +106,12 @@ window.onclick = (e) => {
 const startButton = document.getElementById("start");
 const menu = document.getElementById("menu-container");
 const title = document.getElementById("titulo");
+
 const menuMusic = document.getElementById("menu-music");
+const gameMusic = document.getElementById("game-music");
 
 menuMusic.volume = 0.5;
+gameMusic.volume = 0.4;
 
 // tenta tocar assim que a tela carrega
 menuMusic.play().catch(() => {
@@ -116,6 +128,10 @@ startButton.addEventListener("click", async () => {
     menuMusic.currentTime = 0;
 
     // troca de tela
+
+    gameMusic.currentTime = 0;
+    gameMusic.play();
+
     modalMissao1.style.display = "flex";
     menu.style.display = "none";
     title.style.display = "none";

@@ -1,5 +1,4 @@
-// game.js
-import { vertexShaderSrc, fragmentShaderSrc } from "../assets/shaders/shaders.js";
+import { moonFragmentShaderSrc ,moonVertexShaderSrc} from "../assets/shaders/shaders.js";
 import { createPerspective } from "../math/math3d.js";
 import { createCamera } from "../core/camera.js";
 import { createRect, createWireRect } from "../core/cube.js";
@@ -8,17 +7,11 @@ import { loadTexture } from "../core/loadTexture.js";
 import {
     camPos,
     enableMouse,
-    updateCameraPosition,
-    canInteract,
-    currentInteraction,
-    keys,
-    addInteractionZone,
-    addObstacle
+    updateCameraPosition
 } from "../core/input.js";
-import { loadOBJ } from "../core/objLoader.js";
+
 let running = true;
 
-const outlineColor = [0.043, 0.059, 0.129, 1.0]; // #0B0F21
 // =======================
 // CANVAS
 // =======================
@@ -27,14 +20,6 @@ const modal = document.getElementById("modalInfo");
 canvas.width  = window.innerWidth;
 canvas.height = window.innerHeight;
 
-// =======================
-// HUD / INTERAÇÃO
-// =======================
-const container = document.getElementById("progressContainer");
-const bar       = document.getElementById("progressBar");
-
-const INTERACTION_TIME = 120;
-const interactionState = { painel: 0, electric: 0, door: 0 };
 
 // =======================
 // WEBGL
@@ -58,38 +43,28 @@ function compileShader(type, src) {
 }
 
 const program = gl.createProgram();
-gl.attachShader(program, compileShader(gl.VERTEX_SHADER, vertexShaderSrc));
-gl.attachShader(program, compileShader(gl.FRAGMENT_SHADER, fragmentShaderSrc));
+gl.attachShader(program, compileShader(gl.VERTEX_SHADER, moonVertexShaderSrc));
+gl.attachShader(program, compileShader(gl.FRAGMENT_SHADER, moonFragmentShaderSrc));
 gl.linkProgram(program);
 gl.useProgram(program);
+// ===== PHONG: UNIFORMS =====
+const uLightPosLoc   = gl.getUniformLocation(program, "uLightPos");
+const uViewPosLoc    = gl.getUniformLocation(program, "uViewPos");
+const uLightColorLoc = gl.getUniformLocation(program, "uLightColor");
+const uShininessLoc  = gl.getUniformLocation(program, "uShininess");
+
+// ===== VALORES =====
+gl.uniform3fv(uLightPosLoc, [2.0, 4.0, 2.0]);   // posição da luz (sol)
+gl.uniform3fv(uViewPosLoc, camPos);            // posição da câmera
+gl.uniform3fv(uLightColorLoc, [1.0, 1.0, 1.0]); // luz branca
+gl.uniform1f(uShininessLoc, 32.0);              // brilho Phong
 
 
+const lightPosLoc  = gl.getUniformLocation(program, "uLightPos");
+const viewPosLoc   = gl.getUniformLocation(program, "uViewPos");
+const lightColorLoc = gl.getUniformLocation(program, "uLightColor");
 
-function drawSolidRect(rect, color) {
-    gl.uniform1i(useTexLoc, false);
-    gl.uniform4fv(colorLoc, color);
 
-    // vértices
-    gl.bindBuffer(gl.ARRAY_BUFFER, rect.vbo);
-    gl.vertexAttribPointer(posLoc, 3, gl.FLOAT, false, 0, 0);
-    gl.enableVertexAttribArray(posLoc);
-
-    // triângulos
-    gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, rect.ebo);
-    gl.drawElements(gl.TRIANGLES, rect.indexCount, gl.UNSIGNED_SHORT, 0);
-}
-
-function drawWireRect(rect, color) {
-    gl.uniform1i(useTexLoc, false);
-    gl.uniform4fv(colorLoc, color);
-
-    gl.bindBuffer(gl.ARRAY_BUFFER, rect.vbo);
-    gl.vertexAttribPointer(posLoc, 3, gl.FLOAT, false, 0, 0);
-    gl.enableVertexAttribArray(posLoc);
-
-    gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, rect.lbo);
-    gl.drawElements(gl.LINES, rect.lineCount, gl.UNSIGNED_SHORT, 0);
-}
 // =======================
 // DIMENSÕES DA SALA
 // =======================
@@ -108,35 +83,6 @@ const wallRight = createWireRect(gl, wallThickness, roomHeight, roomDepth, [+(ro
 const floor     = createWireRect(gl, roomWidth, wallThickness, roomDepth, [0, -(roomHeight / 2), 0]);
 const ceiling   = createWireRect(gl, roomWidth, wallThickness, roomDepth, [0, +(roomHeight / 2), 0]);
 const ceilingTexture = loadTexture(gl, "./assets/texture/tetoLua.png");
-
-function distance(a, b) {
-  const dx = a[0] - b[0];
-  const dy = a[1] - b[1];
-  const dz = a[2] - b[2];
-  return Math.sqrt(dx*dx + dy*dy + dz*dz);
-}
-function worldToScreen(pos, viewProj, width, height) {
-  const [x, y, z] = pos;
-  const v = [x, y, z, 1];
-
-  const r = new Float32Array(4);
-  for (let i = 0; i < 4; i++) {
-    r[i] =
-      v[0] * viewProj[i] +
-      v[1] * viewProj[i + 4] +
-      v[2] * viewProj[i + 8] +
-      v[3] * viewProj[i + 12];
-  }
-
-  const ndcX = r[0] / r[3];
-  const ndcY = r[1] / r[3];
-
-  return {
-    x: (ndcX * 0.5 + 0.5) * width,
-    y: (-ndcY * 0.5 + 0.5) * height
-  };
-}
-
 
 
 // =======================
@@ -163,45 +109,6 @@ function multiply(a, b) {
             r[j*4+i] = a[i]*b[j*4] + a[i+4]*b[j*4+1] + a[i+8]*b[j*4+2] + a[i+12]*b[j*4+3];
     return r;
 }
-
-function translate(x, y, z) {
-    return new Float32Array([
-        1, 0, 0, 0,
-        0, 1, 0, 0,
-        0, 0, 1, 0,
-        x, y, z, 1
-    ]);
-}
-
-function scaleMatrix(sx, sy, sz) {
-    return new Float32Array([
-        sx, 0,  0,  0,
-        0,  sy, 0,  0,
-        0,  0,  sz, 0,
-        0,  0,  0,  1
-    ]);
-}
-
-function rotateY(angle) {
-    const c = Math.cos(angle);
-    const s = Math.sin(angle);
-    return new Float32Array([
-        c, 0, -s, 0,
-        0, 1, 0, 0,
-        s, 0,  c, 0,
-        0, 0, 0, 1
-    ]);
-}
-
-function drawRect(rect, color) {
-    gl.bindBuffer(gl.ARRAY_BUFFER, rect.vbo);
-    gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, rect.ebo);
-    gl.vertexAttribPointer(posLoc, 3, gl.FLOAT, false, 0, 0);
-    gl.enableVertexAttribArray(posLoc);
-    gl.uniform4fv(colorLoc, color);
-    gl.drawElements(gl.LINES, rect.lineCount, gl.UNSIGNED_SHORT, 0);
-}
-
 
 function drawTexturedRect(rect) {
     gl.uniform1i(useTexLoc, true);
@@ -269,26 +176,6 @@ function render() {
     const proj = createPerspective(Math.PI / 3, canvas.width / canvas.height, 0.1, 1000);
     const dir = updateCameraPosition();
 
-    // ===== INTERAÇÃO =====
-    if (canInteract && currentInteraction) {
-        if (keys["e"]) {
-            interactionState[currentInteraction]++;
-            if (interactionState[currentInteraction] >= INTERACTION_TIME) {
-                interactionState[currentInteraction] = INTERACTION_TIME;
-                console.log("INTERAÇÃO CONCLUÍDA:", currentInteraction);
-            }
-        } else {
-            interactionState[currentInteraction] = 0;
-        }
-
-        const progress = Math.min(interactionState[currentInteraction] / INTERACTION_TIME, 1);
-        bar.style.width = (progress * 100) + "%";
-        container.style.display = "block";
-    } else {
-        container.style.display = "none";
-        bar.style.width = "0%";
-    }
-
     const cam = createCamera(
         camPos,
         [camPos[0] + dir[0], camPos[1] + dir[1], camPos[2] + dir[2]],
@@ -296,6 +183,16 @@ function render() {
     );
 
     gl.uniformMatrix4fv(transfLoc, false, multiply(proj, cam));
+    gl.uniform3fv(lightPosLoc, [50, 80, 50]);
+    gl.uniform3fv(lightColorLoc, [1.0, 1.0, 1.0]);
+
+    // Posição da câmera (necessário pro specular)
+    gl.uniform3fv(viewPosLoc, camPos);
+
+    gl.uniform3fv(uLightPosLoc, [2.0, 4.0, 2.0]);
+    gl.uniform3fv(uViewPosLoc, camPos); // posição da câmera
+    gl.uniform3fv(uLightColorLoc, [1.0, 1.0, 1.0]);
+    gl.uniform1f(uShininessLoc, 32.0);
 
     // =======================
     // DESENHO SALA
@@ -307,7 +204,7 @@ function render() {
     drawTexturedSurface(wallRight, wallTextureDir);
 
 
-    drawTexturedRect(floor); // 👈 chão com imagem
+    drawTexturedRect(floor); // 
 
     drawTexturedSurface(ceiling,    ceilingTexture);
     
