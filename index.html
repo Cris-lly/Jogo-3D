@@ -19,30 +19,99 @@
 
     
    <div id="game-screen" style="display: none;">
-    <canvas id="glCanvas"></canvas>
-    <div id="modalInfo">
-    👨‍🚀 Astronauta<br>
-    Pressione E para interagir
+        <canvas id="glCanvas"></canvas>
+        <div id="modalInfo" class="modalInfo">
+        👨‍🚀 Astronauta<br>
+        Aperte a tecla I para interagir
+        </div>
+
+        <div id="Energia" class="modalInfo">
+        ⚡ Painel de Energia<br>
+        Aperte a tecla I para interagir
+        </div>
+
+        <div id="modalInfoEscotilha" class="modalInfo">
+        🚪 Escotilha<br>
+        Aperte a tecla I para interagir
+        </div>
+
+        <div id="modalInfoControle" class="modalInfo">
+        🖥️ Painel de Controle<br>
+        Aperte a tecla I para interagir
+        </div>
+
+        <div id="missao-1" class="modal">
+            <div class="modal-content">
+                <span id="closeModalMissao" class="close">&times;</span>
+                <h2>
+                    Missão 1: Primeiro Contato
+                </h2>
+                <p> Bem-vindo(a), Comandante. Você está a bordo de uma nave em uma missão crucial para a humanidade. Antes de avançar, será necessário realizar ajustes essenciais para garantir o sucesso da operação. 
+                    Sua primeira tarefa é estabelecer contato com o astronauta a bordo e obter o relatório da missão.
+            </p>
+            </div>
+        </div>
+        <div id="missao-2" class="modal">
+            <div class="modal-content">
+                <span id="closeModalMissao2" class="closeMissao">&times;</span>
+                <h2>
+                    Missão 2: Pane no sistema
+                </h2>
+                <p>Astronauta, há uma falha no envio das coordenadas. Vá até o painel de controle para restabelecer a comunicação. 
+                    <br>Ação: Segure a tecla E para concluir essa missão.
+                </p>
+            </div>
+        </div>
+         <div id="missao-3" class="modal">
+            <div class="modal-content">
+                <span id="closeModalMissao3" class="closeMissao">&times;</span>
+                <h2>
+                    Missão 3: Eletricidade comprometida
+                </h2>
+                <p>Astronauta, a comunicação foi comprometida por uma pane elétrica. Vá até o painel elétrico e restabeleça o fornecimento de energia.
+                <br>Ação: Segure a tecla E para concluir essa missão.
+                </p>
+            </div>
+        </div>
+         <div id="missao-4" class="modal">
+            <div class="modal-content">
+                <span id="closeModalMissao4" class="closeMissao">&times;</span>
+                <h2>
+                    Missão 4: Pequeno passo
+                </h2>
+                <p>Para reestabelecer o fornecimento elétrico, pressione a tecla E. Após restabelecer a energia, você estará pronto para seguir rumo à Lua. Dirija-se à escotilha e prepare-se para dar um pequeno passo para o homem, mas um grande salto para a humanidade.
+            </p>
+            </div>
+        </div>
+         <div id="missao-5" class="modal">
+            <div class="modal-content">
+                <span id="closeModalMissao5" class="closeMissao">&times;</span>
+                <h2>
+                    Missão 5: Grande Salto
+                </h2>
+                <p>Olá, tripulante! Você chegou ao momento mais importante. Pressione E para configurar a escotilha e, em seguida, afaste-se dela e aperte L para dar seu primeiro passo na Lua.
+            </p>
+            </div>
+        </div>
+
     </div>
-</div>
-
-<canvas id="glCanvas"></canvas>
-
-<div id="hud">
-    <div id="progressContainer">
-        <div id="progressBar"></div>
+    <!-- Modal da missão concluída -->
+   <div id="missionModal" class="mission-modal">
+        <div class="modal-content-complete">
+            <h2>Missão cumprida!</h2>
+            <img id="missionImg" src="./assets/texture/complete.gif" alt="Missão Concluída">
+        </div>
     </div>
-</div>
 
-<div id="modalInfo">
-    👨‍🚀 Astronauta<br>
-    Pressione E para interagir
+    <div id="hud">
+        <div id="progressContainer">
+            <div id="progressBar"></div>
+        </div>
     </div>
-</div>
 
-<audio id="menu-music" loop>
-    <source src="assets/sounds/space_cadet.MP3" type="audio/mpeg">
-</audio>
+    <audio id="menu-music" loop>
+        <source src="assets/sounds/space_cadet.MP3" type="audio/mpeg">
+    </audio>
 
 
     <div class="hud-footer" style="width: 95%;">
