@@ -1,5 +1,5 @@
 // game.js
-import { vertexShaderSrc, fragmentShaderSrc } from "../core/shaders.js";
+import { vertexShaderSrc, fragmentShaderSrc } from "../assets/shaders/shaders.js";
 import { createPerspective } from "../math/math3d.js";
 import { createCamera } from "../core/camera.js";
 import { createRect, createWireRect } from "../core/cube.js";
@@ -23,7 +23,18 @@ const outlineColor = [0.043, 0.059, 0.129, 1.0]; // #0B0F21
 // CANVAS
 // =======================
 const canvas = document.getElementById("glCanvas");
-const modal = document.getElementById("modalInfo");
+const interactionModals = {
+  astronaut: document.getElementById("modalInfo"),
+  electric: document.getElementById("Energia"),
+  door: document.getElementById("modalInfoEscotilha"),
+  painel: document.getElementById("modalInfoControle")
+};
+function hideAllInteractionModals() {
+  Object.values(interactionModals).forEach(modal => {
+    modal.style.display = "none";
+  });
+}
+
 canvas.width  = window.innerWidth;
 canvas.height = window.innerHeight;
 
@@ -35,6 +46,8 @@ const bar       = document.getElementById("progressBar");
 
 const INTERACTION_TIME = 120;
 const interactionState = { painel: 0, electric: 0, door: 0 };
+
+
 
 // =======================
 // WEBGL
@@ -234,8 +247,80 @@ addObstacle({
 (async function loadModels() {
     objeto = await loadOBJ(gl, "./assets/models/astronaut.obj");
 })();
+addInteractionZone({
+    id: "astronaut",
+    minX: objX - objWidth,
+    maxX: objX + objWidth,
+    minZ: objZ - objDepth - 2,
+    maxZ: objZ + objDepth + 2
+});
 
+const interactionPositions = {
+  astronaut: [objX, objY, objZ],
+  electric: [electricX, 0, 0],
+  door: [0, -(roomHeight / 2) + doorH / 2, doorZ],
+  painel: [0, panelY, panelZ]
+};
 
+function showInteractionModal(id, proj, cam) {
+  const modal = interactionModals[id];
+  const pos   = interactionPositions[id];
+  if (!modal || !pos) return;
+
+  const SHOW_DISTANCE = 12;
+  const d = distance(camPos, pos);
+
+  if (d < SHOW_DISTANCE) {
+    hideAllInteractionModals();
+
+    modal.style.display = "block";
+  } else {
+    modal.style.display = "none";
+  }
+}
+
+let missaoAberta = false;
+
+const interacaoParaMissao = {
+  "astronaut": "missao-2",
+  "painel": "missao-3",
+  "electric": "missao-4",
+  "door": "missao-5"
+};
+
+document.addEventListener("keydown", (e) => {
+  if (
+    (e.key === "i" || e.key === "I") &&
+    currentInteraction &&
+    !missaoAberta
+  ) {
+    const missaoId = interacaoParaMissao[currentInteraction];
+
+    if (missaoId) {
+      document.getElementById(missaoId).style.display = "flex";
+      missaoAberta = true;
+    }
+  }
+});
+
+document.querySelectorAll(".modal").forEach((modal) => {
+  modal.querySelectorAll(".closeMissao").forEach((btn) => {
+    btn.onclick = () => {
+      modal.style.display = "none";
+      missaoAberta = false;
+    };
+  });
+
+  // 🖱️ Clique fora do conteúdo
+  modal.onclick = (e) => {
+    // se clicou no fundo (overlay), fecha
+    if (e.target === modal) {
+      modal.style.display = "none";
+      missaoAberta = false;
+    }
+  };
+
+});
 
 
 function distance(a, b) {
@@ -285,6 +370,7 @@ const textureLoc    = gl.getUniformLocation(program, "uTexture");
 // =======================
 // MATRIZ / UTILIDADES
 // =======================
+
 function multiply(a, b) {
     const r = new Float32Array(16);
     for (let i = 0; i < 4; i++)
@@ -320,6 +406,14 @@ function rotateY(angle) {
         s, 0,  c, 0,
         0, 0, 0, 1
     ]);
+}
+function getOpenModal() {
+  for (const [id, modal] of Object.entries(interactionModals)) {
+    if (modal.style.display === "block" || modal.style.display === "flex") {
+      return id; // retorna o ID do modal aberto
+    }
+  }
+  return null; // nenhum modal aberto
 }
 
 function drawRect(rect, color) {
@@ -386,73 +480,120 @@ gl.enable(gl.DEPTH_TEST);
 gl.activeTexture(gl.TEXTURE0);
 
 const wallTexture = loadTexture(gl, "./assets/texture/parede.jpg");
+
+
+const interactionCompleted = {
+    painel: false,
+    electric: false,
+    door: false,
+    astronaut: false
+};
 // =======================
 // RENDER LOOP
 // =======================
 function render() {
     gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
 
-    const proj = createPerspective(Math.PI / 3, canvas.width / canvas.height, 0.1, 1000);
+    const proj = createPerspective(
+        Math.PI / 3,
+        canvas.width / canvas.height,
+        0.1,
+        1000
+    );
+
     const dir = updateCameraPosition();
 
-    // ===== INTERAÇÃO =====
-    if (canInteract && currentInteraction) {
-        if (keys["e"]) {
-            interactionState[currentInteraction]++;
-            if (interactionState[currentInteraction] >= INTERACTION_TIME) {
-                interactionState[currentInteraction] = INTERACTION_TIME;
-                console.log("INTERAÇÃO CONCLUÍDA:", currentInteraction);
-            }
-        } else {
-            interactionState[currentInteraction] = 0;
-        }
-
-        const progress = Math.min(interactionState[currentInteraction] / INTERACTION_TIME, 1);
-        bar.style.width = (progress * 100) + "%";
-        container.style.display = "block";
-    } else {
-        container.style.display = "none";
-        bar.style.width = "0%";
-    }
-
+    // =======================
+    // CÂMERA
+    // =======================
     const cam = createCamera(
         camPos,
-        [camPos[0] + dir[0], camPos[1] + dir[1], camPos[2] + dir[2]],
+        [
+            camPos[0] + dir[0],
+            camPos[1] + dir[1],
+            camPos[2] + dir[2]
+        ],
         [0, 1, 0]
     );
 
     gl.uniformMatrix4fv(transfLoc, false, multiply(proj, cam));
 
     // =======================
-    // DESENHO SALA
+    // INTERAÇÃO (BARRA)
     // =======================
-    // paredes com textura
+    if (canInteract && currentInteraction) {
+        // só permite interação se ainda não tiver completado
+        if (!interactionCompleted[currentInteraction]) {
+            if (keys["e"]) {
+                interactionState[currentInteraction]++;
+                if (interactionState[currentInteraction] >= INTERACTION_TIME) {
+                    interactionState[currentInteraction] = INTERACTION_TIME;
+                    // MARCA COMO COMPLETA
+                    interactionCompleted[currentInteraction] = true;
+
+                    // MOSTRAR IMAGEM AO INVÉS DO ALERT
+                    const modal = document.getElementById("missionModal");
+                    modal.style.display = "flex";
+                    keys["e"] = false;
+                    console.log("INTERAÇÃO CONCLUÍDA:", currentInteraction);
+
+                    //fechar modal de missão
+                    const openModalId = getOpenModal(); 
+                    const missaoId = interacaoParaMissao[openModalId]; 
+                    const modalMissaoAberto = document.getElementById(missaoId); 
+                    if (openModalId) { 
+                        modalMissaoAberto.style.display = "none"; missaoAberta = false; 
+                    } else { 
+                        console.log("Nenhum modal aberto no momento."); 
+                    }
+
+                    // FECHAR AUTOMATICAMENTE APÓS 2 SEGUNDOS
+                    setTimeout(() => {
+                        modal.style.display = "none";
+                    }, 2000);
+                }
+            } else {
+                interactionState[currentInteraction] = 0;
+            }
+
+            const progress = Math.min(interactionState[currentInteraction] / INTERACTION_TIME, 1);
+            bar.style.width = (progress * 100) + "%";
+            container.style.display = "block";
+        } else {
+            // já completou, não mostra mais a barra
+            container.style.display = "none";
+            bar.style.width = "0%";
+        }
+    } else {
+        container.style.display = "none";
+        bar.style.width = "0%";
+    }
+
+
+    // =======================
+    // DESENHO DA SALA
+    // =======================
     drawTexturedSurface(wallFront, wallTexture);
     drawTexturedSurface(wallBack,  wallTexture);
     drawTexturedSurface(wallLeft,  wallTexture);
     drawTexturedSurface(wallRight, wallTexture);
 
+    drawTexturedRect(floor);
+    drawTexturedSurface(ceiling, ceilingTexture);
 
-    drawTexturedRect(floor); // 👈 chão com imagem
-
-    drawTexturedSurface(ceiling,    ceilingTexture);
-
-
-    drawSolidRect(panel,         [0.208, 0.235, 0.388, 1.0]);
+    drawSolidRect(panel, [0.208, 0.235, 0.388, 1.0]);
     drawWireRect(panel, outlineColor);
 
-    // painel elétrico sólido
     drawSolidRect(electricPanel, [0.741, 0.808, 0.910, 1.0]);
     drawWireRect(electricPanel, outlineColor);
 
-    drawSolidRect(door,          [0.729, 0.749, 0.776, 1.0]);
+    drawSolidRect(door, [0.729, 0.749, 0.776, 1.0]);
     drawWireRect(door, outlineColor);
-
 
     drawTexturedSurface(spaceWindow, windowTexture);
 
     // =======================
-    // DESENHO ASTRONAUTA
+    // DESENHO DO ASTRONAUTA
     // =======================
     if (objeto) {
         const time = performance.now();
@@ -464,7 +605,12 @@ function render() {
 
         const model = multiply(T, multiply(R, S));
 
-        gl.uniformMatrix4fv(transfLoc, false, multiply(proj, multiply(cam, model)));
+        gl.uniformMatrix4fv(
+            transfLoc,
+            false,
+            multiply(proj, multiply(cam, model))
+        );
+
         gl.bindBuffer(gl.ARRAY_BUFFER, objeto.vbo);
         gl.vertexAttribPointer(posLoc, 3, gl.FLOAT, false, 0, 0);
         gl.enableVertexAttribArray(posLoc);
@@ -474,52 +620,24 @@ function render() {
 
         gl.uniform4fv(colorLoc, outlineColor);
         gl.drawArrays(gl.LINES, 0, objeto.vertexCount);
-
-
-        const objWorldPos = [objX, objY, objZ];
-    const d = distance(camPos, objWorldPos);
-
-    const SHOW_DISTANCE = 12;
-
-    if (d < SHOW_DISTANCE) {
-        modal.style.display = "block";
-
-        const vp = multiply(proj, cam);
-
-        const screenPos = worldToScreen(
-            [objX, objY + 8, objZ], // acima do astronauta
-            vp,
-            canvas.width,
-            canvas.height
-        );
-
-        modal.style.left = `${screenPos.x}px`;
-        modal.style.top  = `${screenPos.y}px`;
-        } else {
-        modal.style.display = "none";
-         gl.bindBuffer(gl.ARRAY_BUFFER, objeto.vbo);
-        gl.vertexAttribPointer(posLoc, 3, gl.FLOAT, false, 0, 0);
-        gl.enableVertexAttribArray(posLoc);
-
-        // =======================
-        // OBJETO SÓLIDO
-        // =======================
-        gl.uniform4fv(colorLoc, astronautColor);
-        gl.drawArrays(gl.TRIANGLES, 0, objeto.vertexCount);
-
-        // =======================
-        // WIREFRAME
-        // =======================
-        gl.uniform4f(colorLoc, 0.0, 0.0, 0.0, 1.0);
-    }
     }
 
+    // =======================
+    // MODAIS DE INTERAÇÃO (CENTRO DA TELA)
+    // =======================
+    if (currentInteraction) {
+        showInteractionModal(currentInteraction);
+    } else {
+        hideAllInteractionModals();
+    }
+
+    // =======================
+    // LOOP
+    // =======================
     if (running) {
         requestAnimationFrame(render);
     }
-
 }
-
 export function stopGame() {
        running = false;
 }

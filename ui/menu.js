@@ -24,6 +24,10 @@ canvas.addEventListener("keydown", async (e) => {
 
 
             // carrega a lua
+            document.querySelectorAll(".modal").forEach(modal => {
+                modal.style.display = "none";
+            });
+            
             await import("../game/gameLua.js");
         }
     }
@@ -34,16 +38,19 @@ canvas.addEventListener("keydown", async (e) => {
 console.log("GAME INICIADO");
 
 document.getElementById("exit").onclick = () => {
-  alert("Sair do jogo");
+  window.close();
 };
 
 const modal = document.getElementById("myModal");
+const modalMissao1 = document.getElementById("missao-1")
 const openBtn = document.getElementById("story-btn");
 const closeBtn = document.getElementById("closeModal");
 
 const modalProfile = document.getElementById("myProfile");
 const openBtnProfile = document.getElementById("profile");
 const closeBtnProfile = document.getElementById("closeModalProfile");
+
+const closeBtnMissao = document.getElementById("closeModalMissao");
 
 // Abrir modal
 openBtn.onclick = () => {
@@ -66,6 +73,11 @@ closeBtnProfile.onclick = () => {
   modalProfile.style.display = "none";
 };
 
+// Fechar modal ao clicar no X
+closeBtnMissao.onclick = () => {
+  modalMissao1.style.display = "none";
+};
+
 window.onclick = (e) => {
   // Clicar fora do modal de história
   if (e.target === modal) {
@@ -74,6 +86,10 @@ window.onclick = (e) => {
   // Clicar fora do modal de perfil
   if (e.target === modalProfile) {
     modalProfile.style.display = "none";
+  }
+  // Clicar fora do modal de missao
+  if (e.target === modalMissao1) {
+    modalMissao1.style.display = "none";
   }
 };
 //======================================================
@@ -100,6 +116,7 @@ startButton.addEventListener("click", async () => {
     menuMusic.currentTime = 0;
 
     // troca de tela
+    modalMissao1.style.display = "flex";
     menu.style.display = "none";
     title.style.display = "none";
 
@@ -107,7 +124,6 @@ startButton.addEventListener("click", async () => {
     const canvas = document.getElementById("glCanvas");
     gameScreen.style.display = "block";
     canvas.style.display = "block";
-
     await import("../game/game.js");
 });
 

@@ -1,5 +1,5 @@
 // game.js
-import { vertexShaderSrc, fragmentShaderSrc } from "../core/shaders.js";
+import { vertexShaderSrc, fragmentShaderSrc } from "../assets/shaders/shaders.js";
 import { createPerspective } from "../math/math3d.js";
 import { createCamera } from "../core/camera.js";
 import { createRect, createWireRect } from "../core/cube.js";
