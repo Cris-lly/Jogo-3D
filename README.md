@@ -18,3 +18,4 @@ Para jogar Mission: Moon, é necessário usar o Live Server, disponível como ex
 📊 Link: https://docs.google.com/presentation/d/1PRCt8JWjii0o3j420AhjX_ME0Zz_ZIP-0nkkS393AQs/edit?usp=sharing
 
 ### Link para o vídeo demonstrando a execução do programa:
+▶️ Link: https://youtu.be/8ouiyzsCJS4 
