@@ -107,136 +107,7 @@ const wallLeft  = createWireRect(gl, wallThickness, roomHeight, roomDepth, [-(ro
 const wallRight = createWireRect(gl, wallThickness, roomHeight, roomDepth, [+(roomWidth / 2), 0, 0]);
 const floor     = createWireRect(gl, roomWidth, wallThickness, roomDepth, [0, -(roomHeight / 2), 0]);
 const ceiling   = createWireRect(gl, roomWidth, wallThickness, roomDepth, [0, +(roomHeight / 2), 0]);
-const ceilingTexture = loadTexture(gl, "./assets/texture/teto.jpg");
-// =======================
-// PAINEL PRINCIPAL
-// =======================
-const panelW = 40, panelH = 6, panelD = 6;
-const panelY = -(roomHeight / 2) + panelH / 2; // encostado no chão
-const panelZ = -(roomDepth / 2) + wallThickness + panelD / 2 + 0.01; // encostado na parede
-
-const panel = createWireRect(gl, panelW, panelH, panelD, [0, panelY, panelZ]);
-
-addObstacle({
-    minX: -panelW / 2,
-    maxX:  panelW / 2,
-    minY: panelY - panelH / 2,
-    maxY: panelY + panelH / 2,
-    minZ: panelZ - panelD / 2,
-    maxZ: panelZ + panelD / 2
-});
-
-addInteractionZone({
-    id: "painel",
-    minX: -panelW / 2,
-    maxX:  panelW / 2,
-    minZ: panelZ - panelD / 2 - 1.5,
-    maxZ: panelZ + panelD / 2 + 1.5
-});
-
-// =======================
-// PAINEL ELÉTRICO
-// =======================
-const electricW = 6, electricH = 10, electricD = 2;
-const electricX = (roomWidth / 2) - wallThickness - electricD / 2 - 0.01;
-
-const electricPanel = createWireRect(
-    gl,
-    electricD,
-    electricH,
-    electricW,
-    [electricX, 0, 0]
-);
-addObstacle({
-    minX: electricX - electricD / 2,
-    maxX: electricX + electricD / 2,
-    minY: -electricH / 2,
-    maxY:  electricH / 2,
-    minZ: -electricW / 2,
-    maxZ:  electricW / 2
-});
-
-addInteractionZone({
-    id: "electric",
-    minX: electricX - electricD / 2 - 1.5,
-    maxX: electricX + electricD / 2 + 1.5,
-    minZ: -electricW / 2 - 1.5,
-    maxZ:  electricW / 2 + 1.5
-});
-
-// =======================
-// PORTA
-// =======================
-const doorW = 12, doorH = 18, doorD = 2;
-const doorZ = +(roomDepth / 2) - wallThickness - doorD / 2 - 0.01;
-
-const door = createWireRect(
-  gl,
-  doorW,
-  doorH,
-  doorD,
-  [0, -(roomHeight / 2) + doorH / 2, doorZ]
-);
-
-
-addObstacle({
-    minX: -doorW / 2,
-    maxX:  doorW / 2,
-    minY: -(roomHeight / 2),
-    maxY: -(roomHeight / 2) + doorH,
-    minZ: doorZ - doorD / 2,
-    maxZ: doorZ + doorD / 2
-});
-
-addInteractionZone({
-    id: "door",
-    minX: -doorW / 2 - 1.5,
-    maxX:  doorW / 2 + 1.5,
-    minZ: doorZ - 2.5,
-    maxZ: doorZ + 2.5
-});
-
-// =======================
-// JANELA (VISUAL, SEM COLISÃO)
-// =======================
-const spaceWindow = createWireRect(gl, 50, 15, 0.1, [0, 0, -(roomDepth / 2) + wallThickness + 0.05]);
-const windowTexture = loadTexture(gl, "./assets/texture/universo.jpg");
-
-// =======================
-// ASTRONAUTA
-// =======================
-const floatAmplitude = 0.8;
-const floatSpeed = 0.002;
-let objeto = null;
-
-const objWidth  = 4;
-const objHeight = 6;
-const objDepth  = 3;
-const objScale = 8.0; // 
-const objRotation = 80 * Math.PI / 180;
-const astronautColor = [1.0, 1.0, 1.0, 1.0]; // branco
-
-
-const objX = -(roomWidth / 2) + (objWidth / 2); // lateral esquerda
-const objY = -(roomHeight / 2) + (objHeight / 2); // chão
-const objZ = 0;
-const floatY = Math.sin(performance.now() * floatSpeed) * floatAmplitude;
-addObstacle({
-    minX: objX - objWidth / 2,
-    maxX: objX + objWidth / 2,
-    minY: objY - objHeight / 2 + floatY,
-    maxY: objY + objHeight / 2 + floatY,
-    minZ: objZ - objDepth / 2,
-    maxZ: objZ + objDepth / 2
-});
-
-
-(async function loadModels() {
-    objeto = await loadOBJ(gl, "./assets/models/astronaut.obj");
-})();
-
-
-
+const ceilingTexture = loadTexture(gl, "./assets/texture/tetoLua.png");
 
 function distance(a, b) {
   const dx = a[0] - b[0];
@@ -380,12 +251,15 @@ function drawTexturedSurface(rect, texture) {
     gl.uniform1i(useTexLoc, false);
 }
 
-const floorTexture = loadTexture(gl, "./assets/texture/piso (1).jpg");
+const floorTexture = loadTexture(gl, "./assets/texture/pisoLua.jpg");
 
 gl.enable(gl.DEPTH_TEST);
 gl.activeTexture(gl.TEXTURE0);
 
-const wallTexture = loadTexture(gl, "./assets/texture/parede.jpg");
+const wallTextureBack = loadTexture(gl, "./assets/texture/fundoLua.png");
+const wallTextureFront = loadTexture(gl, "./assets/texture/paredeFrente.png");
+const wallTextureDir = loadTexture(gl, "./assets/texture/paredeDir.png");
+const wallTextureEsq = loadTexture(gl, "./assets/texture/paredeEsq.png");
 // =======================
 // RENDER LOOP
 // =======================
@@ -427,97 +301,20 @@ function render() {
     // DESENHO SALA
     // =======================
     // paredes com textura
-    drawTexturedSurface(wallFront, wallTexture);
-    drawTexturedSurface(wallBack,  wallTexture);
-    drawTexturedSurface(wallLeft,  wallTexture);
-    drawTexturedSurface(wallRight, wallTexture);
+    drawTexturedSurface(wallFront, wallTextureFront);
+    drawTexturedSurface(wallBack,  wallTextureBack);
+    drawTexturedSurface(wallLeft,  wallTextureEsq);
+    drawTexturedSurface(wallRight, wallTextureDir);
 
 
     drawTexturedRect(floor); // 👈 chão com imagem
 
     drawTexturedSurface(ceiling,    ceilingTexture);
-
-
-    drawSolidRect(panel,         [0.208, 0.235, 0.388, 1.0]);
-    drawWireRect(panel, outlineColor);
-
-    // painel elétrico sólido
-    drawSolidRect(electricPanel, [0.741, 0.808, 0.910, 1.0]);
-    drawWireRect(electricPanel, outlineColor);
-
-    drawSolidRect(door,          [0.729, 0.749, 0.776, 1.0]);
-    drawWireRect(door, outlineColor);
-
-
-    drawTexturedSurface(spaceWindow, windowTexture);
-
-    // =======================
-    // DESENHO ASTRONAUTA
-    // =======================
-    if (objeto) {
-        const time = performance.now();
-        const floatY = Math.sin(time * floatSpeed) * floatAmplitude;
-
-        const S = scaleMatrix(objScale, objScale, objScale);
-        const R = rotateY(objRotation);
-        const T = translate(objX, objY + floatY, objZ);
-
-        const model = multiply(T, multiply(R, S));
-
-        gl.uniformMatrix4fv(transfLoc, false, multiply(proj, multiply(cam, model)));
-        gl.bindBuffer(gl.ARRAY_BUFFER, objeto.vbo);
-        gl.vertexAttribPointer(posLoc, 3, gl.FLOAT, false, 0, 0);
-        gl.enableVertexAttribArray(posLoc);
-
-        gl.uniform4fv(colorLoc, astronautColor);
-        gl.drawArrays(gl.TRIANGLES, 0, objeto.vertexCount);
-
-        gl.uniform4fv(colorLoc, outlineColor);
-        gl.drawArrays(gl.LINES, 0, objeto.vertexCount);
-
-
-        const objWorldPos = [objX, objY, objZ];
-    const d = distance(camPos, objWorldPos);
-
-    const SHOW_DISTANCE = 12;
-
-    if (d < SHOW_DISTANCE) {
-        modal.style.display = "block";
-
-        const vp = multiply(proj, cam);
-
-        const screenPos = worldToScreen(
-            [objX, objY + 8, objZ], // acima do astronauta
-            vp,
-            canvas.width,
-            canvas.height
-        );
-
-        modal.style.left = `${screenPos.x}px`;
-        modal.style.top  = `${screenPos.y}px`;
-        } else {
-        modal.style.display = "none";
-         gl.bindBuffer(gl.ARRAY_BUFFER, objeto.vbo);
-        gl.vertexAttribPointer(posLoc, 3, gl.FLOAT, false, 0, 0);
-        gl.enableVertexAttribArray(posLoc);
-
-        // =======================
-        // OBJETO SÓLIDO
-        // =======================
-        gl.uniform4fv(colorLoc, astronautColor);
-        gl.drawArrays(gl.TRIANGLES, 0, objeto.vertexCount);
-
-        // =======================
-        // WIREFRAME
-        // =======================
-        gl.uniform4f(colorLoc, 0.0, 0.0, 0.0, 1.0);
-    }
-    }
+    
 
     if (running) {
         requestAnimationFrame(render);
     }
-
 }
 
 export function stopGame() {
