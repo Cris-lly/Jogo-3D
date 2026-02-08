@@ -1,5 +1,5 @@
 // game.js
-import { vertexShaderSrc, fragmentShaderSrc } from "../core/shaders.js";
+import { vertexShaderSrc, moonFragmentShaderSrc ,moonVertexShaderSrc} from "../core/shaders.js";
 import { createPerspective } from "../math/math3d.js";
 import { createCamera } from "../core/camera.js";
 import { createRect, createWireRect } from "../core/cube.js";
@@ -34,7 +34,7 @@ const container = document.getElementById("progressContainer");
 const bar       = document.getElementById("progressBar");
 
 const INTERACTION_TIME = 120;
-const interactionState = { painel: 0, electric: 0, door: 0 };
+const interactionState = { door: 0 };
 
 // =======================
 // WEBGL
@@ -58,11 +58,21 @@ function compileShader(type, src) {
 }
 
 const program = gl.createProgram();
-gl.attachShader(program, compileShader(gl.VERTEX_SHADER, vertexShaderSrc));
-gl.attachShader(program, compileShader(gl.FRAGMENT_SHADER, fragmentShaderSrc));
+gl.attachShader(program, compileShader(gl.VERTEX_SHADER, moonVertexShaderSrc));
+gl.attachShader(program, compileShader(gl.FRAGMENT_SHADER, moonFragmentShaderSrc));
 gl.linkProgram(program);
 gl.useProgram(program);
+// ===== PHONG: UNIFORMS =====
+const uLightPosLoc   = gl.getUniformLocation(program, "uLightPos");
+const uViewPosLoc    = gl.getUniformLocation(program, "uViewPos");
+const uLightColorLoc = gl.getUniformLocation(program, "uLightColor");
+const uShininessLoc  = gl.getUniformLocation(program, "uShininess");
 
+// ===== VALORES =====
+gl.uniform3fv(uLightPosLoc, [2.0, 4.0, 2.0]);   // posição da luz (sol)
+gl.uniform3fv(uViewPosLoc, camPos);            // posição da câmera
+gl.uniform3fv(uLightColorLoc, [1.0, 1.0, 1.0]); // luz branca
+gl.uniform1f(uShininessLoc, 32.0);              // brilho Phong
 
 
 function drawSolidRect(rect, color) {
@@ -90,6 +100,13 @@ function drawWireRect(rect, color) {
     gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, rect.lbo);
     gl.drawElements(gl.LINES, rect.lineCount, gl.UNSIGNED_SHORT, 0);
 }
+
+const lightPosLoc  = gl.getUniformLocation(program, "uLightPos");
+const viewPosLoc   = gl.getUniformLocation(program, "uViewPos");
+const lightColorLoc = gl.getUniformLocation(program, "uLightColor");
+
+
+
 // =======================
 // DIMENSÕES DA SALA
 // =======================
@@ -268,7 +285,7 @@ function render() {
 
     const proj = createPerspective(Math.PI / 3, canvas.width / canvas.height, 0.1, 1000);
     const dir = updateCameraPosition();
-
+    
     // ===== INTERAÇÃO =====
     if (canInteract && currentInteraction) {
         if (keys["e"]) {
@@ -296,6 +313,16 @@ function render() {
     );
 
     gl.uniformMatrix4fv(transfLoc, false, multiply(proj, cam));
+    gl.uniform3fv(lightPosLoc, [50, 80, 50]);
+    gl.uniform3fv(lightColorLoc, [1.0, 1.0, 1.0]);
+
+    // Posição da câmera (necessário pro specular)
+    gl.uniform3fv(viewPosLoc, camPos);
+
+    gl.uniform3fv(uLightPosLoc, [2.0, 4.0, 2.0]);
+    gl.uniform3fv(uViewPosLoc, camPos); // posição da câmera
+    gl.uniform3fv(uLightColorLoc, [1.0, 1.0, 1.0]);
+    gl.uniform1f(uShininessLoc, 32.0);
 
     // =======================
     // DESENHO SALA
@@ -307,7 +334,7 @@ function render() {
     drawTexturedSurface(wallRight, wallTextureDir);
 
 
-    drawTexturedRect(floor); // 👈 chão com imagem
+    drawTexturedRect(floor); // 
 
     drawTexturedSurface(ceiling,    ceilingTexture);
     
