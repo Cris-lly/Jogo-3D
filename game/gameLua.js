@@ -1,6 +1,4 @@
-// game.js
-import { vertexShaderSrc, moonFragmentShaderSrc ,moonVertexShaderSrc} from "../core/shaders.js";
-import { vertexShaderSrc, fragmentShaderSrc } from "../assets/shaders/shaders.js";
+import { moonFragmentShaderSrc ,moonVertexShaderSrc} from "../assets/shaders/shaders.js";
 import { createPerspective } from "../math/math3d.js";
 import { createCamera } from "../core/camera.js";
 import { createRect, createWireRect } from "../core/cube.js";
